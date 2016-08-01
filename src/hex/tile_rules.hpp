@@ -31,30 +31,36 @@
 
 namespace hex
 {
-	struct TileImageVariant
+	class TileImageVariant
 	{
-		std::string tod;
-		std::string name;
-		bool random_start;
-		std::vector<std::string> has_flag;
+	public:
+		TileImageVariant(const variant& v);
+	private:
+		std::string tod_;
+		std::string name_;
+		bool random_start_;
+		std::vector<std::string> has_flag_;
 	};
 
-	struct TileImage
+	class TileImage
 	{
-		int layer;
-		std::string image_name;
-		bool random_start;
-		point base;
-		point center;
-		float opacity;
+	public:
+		explicit TileImage(const variant& v);
+	private:
+		int layer_;
+		std::string image_name_;
+		bool random_start_;
+		point base_;
+		point center_;
+		float opacity_;
 		// mask/crop/blit
-		std::vector<TileImageVariant> variants;
+		std::vector<TileImageVariant> variants_;
 	};
 
 	class TileRule
 	{
 	public:
-		TileRule(TerrainRulePtr parent, const variant& v);
+		explicit TileRule(TerrainRulePtr parent, const variant& v);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::unique_ptr<point> position_;
@@ -63,12 +69,13 @@ namespace hex
 		std::vector<std::string> set_flag_;
 		std::vector<std::string> no_flag_;
 		std::vector<std::string> has_flag_;
+		std::unique_ptr<TileImage> image_;
 	};
 
-	class TerrainRule : std::enable_shared_from_this<TerrainRule>
+	class TerrainRule : public std::enable_shared_from_this<TerrainRule>
 	{
 	public:
-		TerrainRule(const variant& v);
+		explicit TerrainRule(const variant& v);
 
 		static TerrainRulePtr create(const variant& v);
 	private:
@@ -82,7 +89,7 @@ namespace hex
 		std::vector<std::string> has_flag_;
 		std::vector<std::string> map_;
 
-		std::vector<TileRule> tile_rules_;
+		std::vector<TileRule> tile_data_;
 		std::unique_ptr<TileImage> image_;
 	};
 }
