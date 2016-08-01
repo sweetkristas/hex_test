@@ -20,6 +20,8 @@
 #include "profile_timer.hpp"
 #include "variant_utils.hpp"
 #include "unit_test.hpp"
+#include "json.hpp"
+#include "hex.hpp"
 
 #if defined(_MSC_VER)
 #define WIN32_LEAN_AND_MEAN
@@ -118,6 +120,19 @@ int main(int argc, char* argv[])
 	read_system_fonts(&font_files);
 	KRE::FontDriver::setAvailableFonts(font_files);
 	KRE::FontDriver::setFontProvider("stb");
+
+	// Load hex data from files
+	try {
+		hex::load_tile_data(json::parse_from_file(data_path + "terrain.cfg"));
+	} catch(json::parse_error& e) {		
+		ASSERT_LOG(false, "Error parsing hex " << (data_path + "terrain.cfg") << " file data: " << e.what());
+	}
+	try {
+		hex::load_terrain_data(json::parse_from_file(data_path + "terrain-graphics.cfg"));
+	} catch(json::parse_error& e) {		
+		ASSERT_LOG(false, "Error parsing hex " << (data_path + "terrain-graphics.cfg") << " file data: " << e.what());
+	}
+
 
 	WindowManager wm("SDL");
 

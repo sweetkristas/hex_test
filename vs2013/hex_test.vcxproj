@@ -14,6 +14,11 @@
     <ClInclude Include="..\src\asserts.hpp" />
     <ClInclude Include="..\src\filesystem.hpp" />
     <ClInclude Include="..\src\formatter.hpp" />
+    <ClInclude Include="..\src\hex\hex.hpp" />
+    <ClInclude Include="..\src\hex\hex_fwd.hpp" />
+    <ClInclude Include="..\src\hex\hex_loader.hpp" />
+    <ClInclude Include="..\src\hex\hex_tile.hpp" />
+    <ClInclude Include="..\src\hex\tile_rules.hpp" />
     <ClInclude Include="..\src\json.hpp" />
     <ClInclude Include="..\src\kre\AlignedAllocator.hpp" />
     <ClInclude Include="..\src\kre\AttributeSet.hpp" />
@@ -110,6 +115,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\filesystem.cpp" />
+    <ClCompile Include="..\src\hex\hex_loader.cpp" />
+    <ClCompile Include="..\src\hex\hex_tile.cpp" />
+    <ClCompile Include="..\src\hex\tile_rules.cpp" />
     <ClCompile Include="..\src\json.cpp" />
     <ClCompile Include="..\src\kre\AttributeSet.cpp" />
     <ClCompile Include="..\src\kre\AttributeSetOGL.cpp" />

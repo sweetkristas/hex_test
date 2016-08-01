@@ -315,6 +315,21 @@
     <ClInclude Include="..\src\kre\WindowManagerFwd.hpp">
       <Filter>Header Files\kre</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\hex\hex_loader.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\hex_tile.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\hex_fwd.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\hex.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\tile_rules.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\filesystem.cpp">
@@ -532,6 +547,15 @@
     </ClCompile>
     <ClCompile Include="..\src\kre\WindowManager.cpp">
       <Filter>Source Files\kre</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\hex_loader.cpp">
+      <Filter>Source Files\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\hex_tile.cpp">
+      <Filter>Source Files\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\tile_rules.cpp">
+      <Filter>Source Files\hex</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

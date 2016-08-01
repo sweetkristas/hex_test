@@ -137,7 +137,7 @@ namespace json
 					return std::make_tuple(DOCUMENT_END, variant());
 				}
 				if(in_string) {
-					if(*it_ == '"' || *it_ == '\'') {
+					if(*it_ == '"' /*|| *it_ == '\''*/) {
 						++it_;
 						variant string_node(new_string);
 						//if(new_string == "true") {
@@ -205,7 +205,7 @@ namespace json
 						new_string += *it_++;
 					}
 				} else {
-					if(*it_ == '{' || *it_ == '}' || *it_ == '[' || *it_ == ']' || *it_ == ',' || *it_ == ':' || *it_ == '"' || *it_ == '\'' || is_space(*it_)) {
+					if(*it_ == '{' || *it_ == '}' || *it_ == '[' || *it_ == ']' || *it_ == ',' || *it_ == ':' || *it_ == '"' /*|| *it_ == '\''*/ || is_space(*it_)) {
 						if(new_string.empty() == false) {
 							if(new_string == "true") {
 								return std::make_tuple(LIT_TRUE, variant::from_bool(true));
@@ -236,7 +236,7 @@ namespace json
 					} else if(*it_ == ':') {
 						++it_;
 						return std::make_tuple(COLON, variant());
-					} else if(*it_ == '"' || *it_ == '\'') {
+					} else if(*it_ == '"' /*|| *it_ == '\''*/) {
 						in_string = true;
 						++it_;
 					} else if(is_digit(*it_) || *it_ == '-') {
