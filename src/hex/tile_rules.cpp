@@ -90,31 +90,76 @@ namespace hex
 		}
 	}
 
-	TerrainRulePtr TerrainRule::create(const variant& v)
+	void TerrainRule::preProcessMap(const variant& tiles)
 	{
-		auto tr = std::make_shared<TerrainRule>(v);
-		if(v.has_key("tile")) {
-			if(v["tile"].is_list()) {
-				for(const auto& tile : v["tile"].as_list()) {
-					auto td = std::unique_ptr<TileRule>(new TileRule(tr, tile));
-					if(td->hasPosition()) {
-						tr->tile_data_.emplace_back(std::move(td));
-					} else {
-						tr->tile_map_.emplace(td->getMapPos(), std::move(td));
-					}
+		if(!tiles.is_null()) {
+			if(tiles.is_list()) {
+				for(const auto& tile : tiles.as_list()) {
+					auto td = std::unique_ptr<TileRule>(new TileRule(shared_from_this(), tile));
+					tile_data_.emplace_back(std::move(td));
 				}
-			} else if(v["tile"].is_map()) {
-				tr->tile_data_.emplace_back(std::unique_ptr<TileRule>(new TileRule(tr, v["tile"])));
+			} else if(tiles.is_map()) {
+				tile_data_.emplace_back(std::unique_ptr<TileRule>(new TileRule(shared_from_this(), tiles)));
 			} else {
 				ASSERT_LOG(false, "Tile data was neither list or map.");
 			}
 		}
+
+		// Map processing.
+		if(map_.empty()) {
+			return;
+		}
+		std::string first_line = boost::trim_copy(map_.front());		
+		int y = first_line.front() == ',' ? 1 : 0;		
+		auto td = std::unique_ptr<TileRule>(new TileRule(shared_from_this()));
+		for(const auto& map_line : map_) {
+			std::vector<std::string> strs;
+			std::string ml = boost::erase_all_copy(boost::erase_all_copy(map_line, "\t"), " ");
+			boost::split(strs, ml, boost::is_any_of(","));
+			// valid symbols are asterisk(*), period(.) and tile references(0-9).
+			// '.' means this rule does not apply to this hex
+			// '*' means this rule applies to this hex, but this hex can be any terrain type
+			// an empty string is an odd line.
+			int x = 0;
+			for(auto& str : strs) {
+				if(str == "." || str.empty()) {
+					// ignore
+				} else if(str == "*") {
+					td->addPosition(point(x,y));
+				} else {
+					try {
+						int pos = boost::lexical_cast<int>(str);
+						bool found = false;
+						for(auto& td : tile_data_) {
+							if(td->getMapPos() == pos) {
+								td->addPosition(point(x,y));
+								found = true;
+							}
+						}
+						ASSERT_LOG(found, "No tile for pos: " << pos);
+					} catch(boost::bad_lexical_cast&) {
+						ASSERT_LOG(false, "Unable to convert to number" << str);
+					}
+				}
+				++x;
+			}
+			++y;
+		}
+		if(!td->getPosition().empty()) {
+			tile_data_.emplace_back(std::move(td));
+		}
+	}
+
+	TerrainRulePtr TerrainRule::create(const variant& v)
+	{
+		auto tr = std::make_shared<TerrainRule>(v);
+		tr->preProcessMap(v["tile"]);
 		return tr;
 	}
 
 	TileRule::TileRule(TerrainRulePtr parent, const variant& v)
 		: parent_(parent),
-		  position_(nullptr),
+		  position_(),
 		  pos_(v["pos"].as_int32(0)),
 		  type_(),
 		  set_flag_(),
@@ -122,15 +167,8 @@ namespace hex
 		  has_flag_(),
 		  image_(nullptr)
 	{
-		if(v.has_key("x")) {
-			position_.reset((new point(v["x"].as_int32())));
-		}
-		if(v.has_key("y")) {
-			if(position_ != nullptr) {
-				position_->y = v["y"].as_int32();
-			} else {
-				position_.reset(new point(0, v["y"].as_int32()));
-			}
+		if(v.has_key("x") || v.has_key("y")) {
+			position_.emplace_back(v["x"].as_int32(0), v["y"].as_int32(0));
 		}
 		std::vector<std::string> set_no_flag;
 		if(v.has_key("set_no_flag")) {
@@ -160,8 +198,80 @@ namespace hex
 		}
 	}
 
+	// To match * type
+	TileRule::TileRule(TerrainRulePtr parent)
+		: parent_(parent),
+		  position_(),
+		  pos_(0),
+		  type_(),
+		  set_flag_(),
+		  no_flag_(),
+		  has_flag_(),
+		  image_(nullptr)
+	{
+		type_.emplace_back("*");
+	}
+
+	bool string_match(const std::string& s1, const std::string& s2)
+	{
+		std::string::const_iterator s1it = s1.cbegin();
+		std::string::const_iterator s2it = s2.cbegin();
+		while(s1it != s1.cend() || s2it != s2.cend()) {
+			if(*s1it == '*') {
+				++s1it;
+				if(s1it == s1.cend()) {
+					// an asterisk at the end of the string matches all, so just return a match.
+					return true;
+				}
+				while(s2it != s2.cend() && *s2it != *s1it) {
+					++s2it;
+				}
+				if(s2it == s2.cend() && s1it != s1.cend()) {
+					return false;
+				}
+				++s1it;
+				++s2it;
+			} else {
+				if(*s1it++ != *s2it++) {
+					return false;
+				}
+			}
+		}
+		if(s1it != s1.cend() && s2it != s2.cend()) {
+			return false;
+		}
+		return true;
+	}
+
 	bool TileRule::match(const HexObject* obj, TerrainRule* tr)
 	{
+		if(obj == nullptr) {
+			for(auto& type : type_) {
+				if(type == "*") {
+					return true;
+				}
+			}
+			return false;
+		}
+		const std::string& hex_type_full = obj->getFullTypeString();
+		const std::string& hex_type = obj->getTypeString();
+		for(auto& type : type_) {
+			if(type == "*" || string_match(type, hex_type)) {
+				const auto& has_flag = has_flag_.empty() ? tr->getHasFlags() : has_flag_;
+				for(auto& f : has_flag) {
+					if(!obj->hasFlag(f)) {
+						return false;
+					}
+				}
+				const auto& no_flag = no_flag_.empty() ? tr->getNoFlags() : no_flag_;
+				for(auto& f : no_flag) {
+					if(obj->hasFlag(f)) {
+						return false;
+					}
+				}
+				return true;
+			}
+		}
 		return false;
 	}
 
@@ -219,36 +329,21 @@ namespace hex
 				}
 			}
 
-			if(map_.empty()) {
-				// No map we expect tiles to have position data.
-				for(const auto& td : tile_data_) {
-					ASSERT_LOG(td->hasPosition(), "No map and tile data doesn't have an x,y position.");
-					const point& p = td->getPosition();
-					int index = p.x + p.y * hmap->getWidth();
-					ASSERT_LOG(index >= 0 && index < map_tiles.size(), "Invalid index for point " << p << " in map.");
+			// No map we expect tiles to have position data.
+			for(const auto& td : tile_data_) {
+				ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
+				const auto& pos_data = td->getPosition();
+				for(const auto& p : pos_data) {
+					int index = (p.x + hex.getX()) + (p.y + hex.getY()) * hmap->getWidth();
+					//ASSERT_LOG(index >= 0 && index < static_cast<int>(map_tiles.size()), "Invalid index for point " << p << " in map.");
 					auto new_obj = hex.getTileAt(p);
 					if(!td->match(new_obj, this)) {
 						continue;
 					}
 				}
-			} else {
-				// Have map, tiles should have map position data.
-				// XXX process map here 
-				// XXX we should transform the map declaration into something more useful.
-				int y = 0;
-				for(const auto& map_line : map_) {
-					std::vector<std::string> strs;
-					boost::split(strs, boost::erase_all_copy(map_line, " \t"), boost::is_any_of(","));
-					// valid symbols are asterisk(*), period(.) and tile references(0-9).
-					// '.' means this rule does not apply to this hex
-					// '*' means this rule applies to this hex, but this hex can be any terrain type
-					// an empty string is an odd line.
-					int x = strs.front().empty() ? 1 : 0;
-					for(auto& str : strs) {
-						
-					}
-				}
 			}
+			// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
+
 		}
 		return false;
 	}

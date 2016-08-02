@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 
 #include "geometry.hpp"
@@ -48,12 +49,15 @@ namespace hex
 		const std::string& getFullTypeString() const { static std::string full_type; full_type = type_str_ + "^" + mod_str_; return full_type; }
 		const HexObject* getTileAt(int x, int y) const;
 		const HexObject* getTileAt(const point& p) const;
+		bool hasFlag(const std::string& flag) const { return flags_.find(flag) != flags_.end(); }
+		void addFlag(const std::string& flag) { flags_.emplace(flag); }
 	private:
 		const HexMap* parent_;
 		point pos_;
 		HexTilePtr tile_;
 		std::string type_str_;
 		std::string mod_str_;
+		std::set<std::string> flags_;
 	};
 
 	class HexMap : public std::enable_shared_from_this<HexMap>

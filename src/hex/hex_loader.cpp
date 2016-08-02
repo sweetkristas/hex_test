@@ -37,9 +37,9 @@ namespace
 		return res;
 	}
 
-	terrain_rule_type& get_terrain_rules()
+	hex::terrain_rule_type& get_terrain_rules()
 	{
-		static terrain_rule_type res;
+		static hex::terrain_rule_type res;
 		return res;
 	}
 }
@@ -122,7 +122,7 @@ namespace hex
 		const auto& tg_data = v["terrain_graphics"].as_list();
 		for(const auto& tg : tg_data) {
 			ASSERT_LOG(tg.is_map(), "Expected inner items of 'terrain_type' to be maps." << tg.to_debug_string());
-			get_terrain_rules().emplace_back(TerrainRule::create(tg));
+			::get_terrain_rules().emplace_back(TerrainRule::create(tg));
 		}
 		LOG_INFO("Loaded " << get_terrain_rules().size() << " terrain rules into memory.");
 	}

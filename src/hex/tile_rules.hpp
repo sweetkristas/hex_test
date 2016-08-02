@@ -63,13 +63,15 @@ namespace hex
 	{
 	public:
 		explicit TileRule(TerrainRulePtr parent, const variant& v);
-		bool hasPosition() const { return position_ != nullptr; }
-		const point& getPosition() const { return *position_; }
+		explicit TileRule(TerrainRulePtr parent);
+		bool hasPosition() const { return !position_.empty(); }
+		const std::vector<point>& getPosition() const { return position_; }
+		void addPosition(const point& p) { position_.emplace_back(p); }
 		int getMapPos() const { return pos_; }
 		bool match(const HexObject* obj, TerrainRule* tr);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
-		std::unique_ptr<point> position_;
+		std::vector<point> position_;
 		int pos_;
 		std::vector<std::string> type_;
 		std::vector<std::string> set_flag_;
@@ -92,6 +94,7 @@ namespace hex
 		const TileImage* getImage() const { return image_.get(); }
 
 		bool match(const HexMapPtr& hmap);
+		void preProcessMap(const variant& tiles);
 
 		static TerrainRulePtr create(const variant& v);
 	private:
@@ -105,8 +108,6 @@ namespace hex
 		std::vector<std::string> has_flag_;
 		std::vector<std::string> map_;
 
-		// for tile data having pos attribute.
-		std::map<int, TileRulePtr> tile_map_;
 		std::vector<TileRulePtr> tile_data_;
 		std::unique_ptr<TileImage> image_;
 	};

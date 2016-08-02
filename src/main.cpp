@@ -168,6 +168,7 @@ int main(int argc, char* argv[])
 	auto rq = rman->addQueue(0, "opaques");
 
 	auto hmap = hex::HexMap::create(data_path + "maps/test01.map");
+	hmap->build();
 
 	SDL_Event e;
 	bool done = false;

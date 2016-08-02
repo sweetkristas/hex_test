@@ -28,6 +28,7 @@
 #include "hex_map.hpp"
 #include "hex_tile.hpp"
 #include "hex_loader.hpp"
+#include "profile_timer.hpp"
 #include "tile_rules.hpp"
 
 namespace hex
@@ -95,6 +96,7 @@ namespace hex
 
 	void HexMap::build()
 	{
+		profile::manager pman("HexMap::build()");
 		auto& terrain_rules = hex::get_terrain_rules();
 		for(auto& tr : terrain_rules) {
 			tr->match(shared_from_this());
