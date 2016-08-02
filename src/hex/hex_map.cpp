@@ -55,7 +55,8 @@ namespace hex
 			std::vector<std::string> types;
 			boost::split(types, line, boost::is_any_of(","), boost::token_compress_off);
 			for(const auto& type : types) {
-				std::string type_str = boost::trim_copy(type);
+				std::string full_type = boost::trim_copy(type);
+				std::string type_str = type;
 				auto pos = type_str.find('^');
 				std::string mod_str;
 				if(pos != std::string::npos) {
@@ -72,7 +73,7 @@ namespace hex
 				}
 				auto tile = get_tile_from_type(type_str);
 				tiles_.emplace_back(x, y, tile, this);
-				tiles_.back().setTypeStr(type_str, mod_str);
+				tiles_.back().setTypeStr(full_type, type_str, mod_str);
 				++x;
 				if(x > max_x) {
 					max_x = x;

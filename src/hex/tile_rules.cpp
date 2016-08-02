@@ -68,15 +68,15 @@ namespace hex
 		}
 		if(v.has_key("set_flag")) {
 			set_flag_ = v["set_flag"].as_list_string();
-			for(const auto& snf : set_no_flag) {
-				set_flag_.emplace_back(snf);
-			}
+		}
+		for(const auto& snf : set_no_flag) {
+			set_flag_.emplace_back(snf);
 		}
 		if(v.has_key("no_flag")) {
 			no_flag_ = v["no_flag"].as_list_string();
-			for(const auto& snf : set_no_flag) {
-				no_flag_.emplace_back(snf);
-			}
+		}
+		for(const auto& snf : set_no_flag) {
+			no_flag_.emplace_back(snf);
 		}
 		if(v.has_key("has_flag")) {
 			has_flag_ = v["has_flag"].as_list_string();
@@ -176,15 +176,15 @@ namespace hex
 		}
 		if(v.has_key("set_flag")) {
 			set_flag_ = v["set_flag"].as_list_string();
-			for(const auto& snf : set_no_flag) {
-				set_flag_.emplace_back(snf);
-			}
+		}
+		for(const auto& snf : set_no_flag) {
+			set_flag_.emplace_back(snf);
 		}
 		if(v.has_key("no_flag")) {
 			no_flag_ = v["no_flag"].as_list_string();
-			for(const auto& snf : set_no_flag) {
-				no_flag_.emplace_back(snf);
-			}
+		}
+		for(const auto& snf : set_no_flag) {
+			no_flag_.emplace_back(snf);
 		}
 		if(v.has_key("has_flag")) {
 			has_flag_ = v["has_flag"].as_list_string();
@@ -222,14 +222,14 @@ namespace hex
 		if(img) {
 			return img->getName();
 		}
-		return "NO IMAGE DEFINED";
+		return std::string();
 	}
 
 	bool string_match(const std::string& s1, const std::string& s2)
 	{
 		std::string::const_iterator s1it = s1.cbegin();
 		std::string::const_iterator s2it = s2.cbegin();
-		while(s1it != s1.cend() || s2it != s2.cend()) {
+		while(s1it != s1.cend() && s2it != s2.cend()) {
 			if(*s1it == '*') {
 				++s1it;
 				if(s1it == s1.cend()) {
@@ -250,7 +250,7 @@ namespace hex
 				}
 			}
 		}
-		if(s1it != s1.cend() && s2it != s2.cend()) {
+		if(s1it != s1.cend() || s2it != s2.cend()) {
 			return false;
 		}
 		return true;
@@ -358,17 +358,17 @@ namespace hex
 				ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
 				const auto& pos_data = td->getPosition();
 				for(const auto& p : pos_data) {
-					int index = (p.x + hex.getX()) + (p.y + hex.getY()) * hmap->getWidth();
-					//ASSERT_LOG(index >= 0 && index < static_cast<int>(map_tiles.size()), "Invalid index for point " << p << " in map.");
-					auto new_obj = hex.getTileAt(p);
+					auto new_obj = hmap->getTileAt(p.x + hex.getX(), p.y + hex.getY());
 					if(!td->match(new_obj, this)) {
 						if(new_obj) {
 							new_obj->clearTempFlags();
 						}
-						continue;
+						break;
 					}
 					if(new_obj) {
-						objs.emplace_back(new_obj, td.get());
+						if(!td->getImage(new_obj).empty()) {
+							objs.emplace_back(new_obj, td.get());
+						}
 					}
 				}
 			}

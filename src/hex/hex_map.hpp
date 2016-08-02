@@ -37,7 +37,8 @@ namespace hex
 	{
 	public:
 		HexObject(int x, int y, const HexTilePtr& tile, const HexMap* parent);
-		void setTypeStr(const std::string& type, const std::string& mods=std::string()) {
+		void setTypeStr(const std::string& full_type, const std::string& type, const std::string& mods=std::string()) {
+			full_type_str_ = full_type;
 			type_str_ = type;
 			mod_str_ = mods;
 		}
@@ -46,7 +47,7 @@ namespace hex
 		int getY() const { return pos_.y; }
 		const std::string& getTypeString() const { return type_str_; }
 		const std::string& getModString() const { return mod_str_; }
-		const std::string& getFullTypeString() const { static std::string full_type; full_type = type_str_ + "^" + mod_str_; return full_type; }
+		const std::string& getFullTypeString() const { return full_type_str_; }
 		const HexObject* getTileAt(int x, int y) const;
 		const HexObject* getTileAt(const point& p) const; 
 		bool hasFlag(const std::string& flag) const { return flags_.find(flag) != flags_.end(); }
@@ -60,6 +61,7 @@ namespace hex
 		HexTilePtr tile_;
 		std::string type_str_;
 		std::string mod_str_;
+		std::string full_type_str_;
 		mutable std::set<std::string> flags_;
 		mutable std::vector<std::string> temp_flags_;
 	};
