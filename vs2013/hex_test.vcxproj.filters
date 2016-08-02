@@ -330,6 +330,9 @@
     <ClInclude Include="..\src\hex\tile_rules.hpp">
       <Filter>Header Files\hex</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\hex\hex_map.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\filesystem.cpp">
@@ -555,6 +558,9 @@
       <Filter>Source Files\hex</Filter>
     </ClCompile>
     <ClCompile Include="..\src\hex\tile_rules.cpp">
+      <Filter>Source Files\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\hex_map.cpp">
       <Filter>Source Files\hex</Filter>
     </ClCompile>
   </ItemGroup>

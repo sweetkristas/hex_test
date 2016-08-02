@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013-2014 by Kristina Simpson <sweet.kristas@gmail.com>
+	Copyright (C) 2013-2016 by Kristina Simpson <sweet.kristas@gmail.com>
 	
 	This software is provided 'as-is', without any express or implied
 	warranty. In no event will the authors be held liable for any damages
@@ -24,9 +24,15 @@
 #pragma once
 
 #include "variant.hpp"
+#include "hex_fwd.hpp"
 
 namespace hex
 {
+	typedef std::vector<hex::TerrainRulePtr> terrain_rule_type;
+
+	HexTilePtr get_tile_from_type(const std::string& type_str);
+	const terrain_rule_type& get_terrain_rules();
+
 	void load_tile_data(const variant& v);
 	void load_terrain_data(const variant& v);
 }

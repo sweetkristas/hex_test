@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013-2014 by Kristina Simpson <sweet.kristas@gmail.com>
+	Copyright (C) 2013-2016 by Kristina Simpson <sweet.kristas@gmail.com>
 	
 	This software is provided 'as-is', without any express or implied
 	warranty. In no event will the authors be held liable for any damages
@@ -21,7 +21,10 @@
 	   distribution.
 */
 
+#include <boost/algorithm/string.hpp>
+
 #include "tile_rules.hpp"
+#include "hex_map.hpp"
 
 namespace hex
 {
@@ -93,10 +96,15 @@ namespace hex
 		if(v.has_key("tile")) {
 			if(v["tile"].is_list()) {
 				for(const auto& tile : v["tile"].as_list()) {
-					tr->tile_data_.emplace_back(tr, tile);
+					auto td = std::unique_ptr<TileRule>(new TileRule(tr, tile));
+					if(td->hasPosition()) {
+						tr->tile_data_.emplace_back(std::move(td));
+					} else {
+						tr->tile_map_.emplace(td->getMapPos(), std::move(td));
+					}
 				}
 			} else if(v["tile"].is_map()) {
-				tr->tile_data_.emplace_back(tr, v["tile"]);
+				tr->tile_data_.emplace_back(std::unique_ptr<TileRule>(new TileRule(tr, v["tile"])));
 			} else {
 				ASSERT_LOG(false, "Tile data was neither list or map.");
 			}
@@ -152,6 +160,11 @@ namespace hex
 		}
 	}
 
+	bool TileRule::match(const HexObject* obj, TerrainRule* tr)
+	{
+		return false;
+	}
+
 	TileImage::TileImage(const variant& v)
 		: layer_(v["layer"].as_int32(-1000)),
 		  image_name_(v["name"].as_string_default("")),
@@ -159,11 +172,16 @@ namespace hex
 		  base_(v["base"].as_int32(0)),
 		  center_(v["center"].as_int32(0)),
 		  opacity_(1.0f),
+		  crop_(),
 		  variants_()
 	{
 		if(v.has_key("O")) {
-			//opacity_ = v["O"]["param"].as_float();
+			opacity_ = v["O"]["param"].as_float();
 		}
+		if(v.has_key("CROP")) {
+			crop_ = rect(v["CROP"]["param"]);
+		}
+		
 		if(v.has_key("variant")) {
 			for(const auto& ivar : v["variant"].as_list()) {
 				variants_.emplace_back(ivar);
@@ -180,6 +198,59 @@ namespace hex
 		if(v.has_key("has_flag")) {
 			has_flag_ = v["has_flag"].as_list_string();
 		}
+	}
+
+	bool TerrainRule::match(const HexMapPtr& hmap)
+	{
+		if(absolute_position_) {
+			ASSERT_LOG(tile_data_.size() != 1, "Number of tiles is not correct in rule.");
+			if(!tile_data_[0]->match(hmap->getTileAt(*absolute_position_), this)) {
+				return false;
+			}
+		}
+
+		const auto& map_tiles = hmap->getTiles();
+
+		for(const auto& hex : map_tiles) {
+			if(mod_position_) {
+				auto& pos = hex.getPosition();
+				if((pos.x % mod_position_->x) != 0 || (pos.y % mod_position_->y) != 0) {
+					continue;
+				}
+			}
+
+			if(map_.empty()) {
+				// No map we expect tiles to have position data.
+				for(const auto& td : tile_data_) {
+					ASSERT_LOG(td->hasPosition(), "No map and tile data doesn't have an x,y position.");
+					const point& p = td->getPosition();
+					int index = p.x + p.y * hmap->getWidth();
+					ASSERT_LOG(index >= 0 && index < map_tiles.size(), "Invalid index for point " << p << " in map.");
+					auto new_obj = hex.getTileAt(p);
+					if(!td->match(new_obj, this)) {
+						continue;
+					}
+				}
+			} else {
+				// Have map, tiles should have map position data.
+				// XXX process map here 
+				// XXX we should transform the map declaration into something more useful.
+				int y = 0;
+				for(const auto& map_line : map_) {
+					std::vector<std::string> strs;
+					boost::split(strs, boost::erase_all_copy(map_line, " \t"), boost::is_any_of(","));
+					// valid symbols are asterisk(*), period(.) and tile references(0-9).
+					// '.' means this rule does not apply to this hex
+					// '*' means this rule applies to this hex, but this hex can be any terrain type
+					// an empty string is an odd line.
+					int x = strs.front().empty() ? 1 : 0;
+					for(auto& str : strs) {
+						
+					}
+				}
+			}
+		}
+		return false;
 	}
 }
 

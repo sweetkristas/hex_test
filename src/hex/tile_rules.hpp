@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013-2014 by Kristina Simpson <sweet.kristas@gmail.com>
+	Copyright (C) 2013-2016 by Kristina Simpson <sweet.kristas@gmail.com>
 	
 	This software is provided 'as-is', without any express or implied
 	warranty. In no event will the authors be held liable for any damages
@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <map>
 #include "geometry.hpp"
 #include "variant.hpp"
 
@@ -53,6 +54,7 @@ namespace hex
 		point base_;
 		point center_;
 		float opacity_;
+		rect crop_;
 		// mask/crop/blit
 		std::vector<TileImageVariant> variants_;
 	};
@@ -61,6 +63,10 @@ namespace hex
 	{
 	public:
 		explicit TileRule(TerrainRulePtr parent, const variant& v);
+		bool hasPosition() const { return position_ != nullptr; }
+		const point& getPosition() const { return *position_; }
+		int getMapPos() const { return pos_; }
+		bool match(const HexObject* obj, TerrainRule* tr);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::unique_ptr<point> position_;
@@ -72,10 +78,20 @@ namespace hex
 		std::unique_ptr<TileImage> image_;
 	};
 
+	typedef std::unique_ptr<TileRule> TileRulePtr;
+
 	class TerrainRule : public std::enable_shared_from_this<TerrainRule>
 	{
 	public:
 		explicit TerrainRule(const variant& v);
+		const std::vector<std::string>& getSetFlags() const { return set_flag_; }
+		const std::vector<std::string>& getNoFlags() const { return no_flag_; }
+		const std::vector<std::string>& getHasFlags() const { return has_flag_; }
+		const std::vector<std::string>& getRotations() const { return rotations_; }
+		const std::vector<std::string>& getMap() const { return map_; }
+		const TileImage* getImage() const { return image_.get(); }
+
+		bool match(const HexMapPtr& hmap);
 
 		static TerrainRulePtr create(const variant& v);
 	private:
@@ -89,7 +105,9 @@ namespace hex
 		std::vector<std::string> has_flag_;
 		std::vector<std::string> map_;
 
-		std::vector<TileRule> tile_data_;
+		// for tile data having pos attribute.
+		std::map<int, TileRulePtr> tile_map_;
+		std::vector<TileRulePtr> tile_data_;
 		std::unique_ptr<TileImage> image_;
 	};
 }

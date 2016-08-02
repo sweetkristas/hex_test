@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013-2014 by Kristina Simpson <sweet.kristas@gmail.com>
+	Copyright (C) 2013-2016 by Kristina Simpson <sweet.kristas@gmail.com>
 	
 	This software is provided 'as-is', without any express or implied
 	warranty. In no event will the authors be held liable for any damages
@@ -26,6 +26,7 @@
 #include "hex_loader.hpp"
 #include "hex_tile.hpp"
 #include "tile_rules.hpp"
+#include "profile_timer.hpp"
 
 namespace
 {
@@ -36,7 +37,6 @@ namespace
 		return res;
 	}
 
-	typedef std::vector<hex::TerrainRulePtr> terrain_rule_type;
 	terrain_rule_type& get_terrain_rules()
 	{
 		static terrain_rule_type res;
@@ -48,6 +48,7 @@ namespace hex
 {
 	void load_tile_data(const variant& v)
 	{
+		profile::manager pman("load_tile_data");
 		ASSERT_LOG(v.is_map() && v.has_key("terrain_type") && v["terrain_type"].is_list(), 
 			"Expected hex tile data to be a map with 'terrain_type' key.");
 		const auto& tt_data = v["terrain_type"].as_list();
@@ -115,6 +116,7 @@ namespace hex
 
 	void load_terrain_data(const variant& v)
 	{
+		profile::manager pman("load_terrain_data");
 		ASSERT_LOG(v.is_map() && v.has_key("terrain_graphics") && v["terrain_graphics"].is_list(), 
 			"Expected hex tile data to be a map with 'terrain_type' key.");
 		const auto& tg_data = v["terrain_graphics"].as_list();
@@ -123,5 +125,17 @@ namespace hex
 			get_terrain_rules().emplace_back(TerrainRule::create(tg));
 		}
 		LOG_INFO("Loaded " << get_terrain_rules().size() << " terrain rules into memory.");
+	}
+
+	HexTilePtr get_tile_from_type(const std::string& type_str)
+	{
+		auto it = get_tile_map().find(type_str);
+		ASSERT_LOG(it != get_tile_map().end(), "No tile definition for type: " << type_str);
+		return it->second;
+	}
+
+	const terrain_rule_type& get_terrain_rules()
+	{
+		return ::get_terrain_rules();
 	}
 }

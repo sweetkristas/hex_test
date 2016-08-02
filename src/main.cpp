@@ -167,6 +167,8 @@ int main(int argc, char* argv[])
 	auto rman = std::make_shared<RenderManager>();
 	auto rq = rman->addQueue(0, "opaques");
 
+	auto hmap = hex::HexMap::create(data_path + "maps/test01.map");
+
 	SDL_Event e;
 	bool done = false;
 	Uint32 last_tick_time = SDL_GetTicks();
