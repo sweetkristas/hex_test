@@ -212,6 +212,19 @@ namespace hex
 		type_.emplace_back("*");
 	}
 
+	std::string TileRule::getImage(const HexObject* obj)
+	{
+		// this is still WIP
+		if(image_) {
+			return image_->getName();
+		}
+		auto img = parent_.lock()->getImage();
+		if(img) {
+			return img->getName();
+		}
+		return "NO IMAGE DEFINED";
+	}
+
 	bool string_match(const std::string& s1, const std::string& s2)
 	{
 		std::string::const_iterator s1it = s1.cbegin();
@@ -269,6 +282,11 @@ namespace hex
 						return false;
 					}
 				}
+
+				const auto& set_flag = set_flag_.empty() ? tr->getSetFlags() : set_flag_;
+				for(auto& f : set_flag) {
+					obj->addTempFlag(f);
+				}
 				return true;
 			}
 		}
@@ -319,6 +337,11 @@ namespace hex
 			}
 		}
 
+		// ignore rotations for the moment.
+		if(!rotations_.empty()) {
+			return false;
+		}
+
 		const auto& map_tiles = hmap->getTiles();
 
 		for(const auto& hex : map_tiles) {
@@ -329,6 +352,7 @@ namespace hex
 				}
 			}
 
+			std::vector<std::pair<const HexObject*, TileRule*>> objs;
 			// No map we expect tiles to have position data.
 			for(const auto& td : tile_data_) {
 				ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
@@ -338,12 +362,21 @@ namespace hex
 					//ASSERT_LOG(index >= 0 && index < static_cast<int>(map_tiles.size()), "Invalid index for point " << p << " in map.");
 					auto new_obj = hex.getTileAt(p);
 					if(!td->match(new_obj, this)) {
+						if(new_obj) {
+							new_obj->clearTempFlags();
+						}
 						continue;
+					}
+					if(new_obj) {
+						objs.emplace_back(new_obj, td.get());
 					}
 				}
 			}
 			// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
-
+			for(auto& obj : objs) {
+				obj.first->setTempFlags();
+				LOG_INFO("tile(" << obj.first->getFullTypeString() << ") at " << obj.first->getPosition() << ": " << obj.second->getImage(obj.first));
+			}
 		}
 		return false;
 	}

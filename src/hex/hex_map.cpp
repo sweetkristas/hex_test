@@ -116,7 +116,7 @@ namespace hex
 		return &tiles_[index];
 	}
 
-	const HexObject* HexMap::getTileAt(const point& p) const
+	const HexObject* HexMap::getTileAt(const point& p) const 
 	{
 		return getTileAt(p.x, p.y);
 	}

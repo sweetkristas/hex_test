@@ -48,16 +48,20 @@ namespace hex
 		const std::string& getModString() const { return mod_str_; }
 		const std::string& getFullTypeString() const { static std::string full_type; full_type = type_str_ + "^" + mod_str_; return full_type; }
 		const HexObject* getTileAt(int x, int y) const;
-		const HexObject* getTileAt(const point& p) const;
+		const HexObject* getTileAt(const point& p) const; 
 		bool hasFlag(const std::string& flag) const { return flags_.find(flag) != flags_.end(); }
 		void addFlag(const std::string& flag) { flags_.emplace(flag); }
+		void addTempFlag(const std::string& flag) const { temp_flags_.emplace_back(flag); }
+		void clearTempFlags() const { temp_flags_.clear(); }
+		void setTempFlags() const { std::copy(temp_flags_.begin(), temp_flags_.end(), inserter(flags_, flags_.begin())); }
 	private:
 		const HexMap* parent_;
 		point pos_;
 		HexTilePtr tile_;
 		std::string type_str_;
 		std::string mod_str_;
-		std::set<std::string> flags_;
+		mutable std::set<std::string> flags_;
+		mutable std::vector<std::string> temp_flags_;
 	};
 
 	class HexMap : public std::enable_shared_from_this<HexMap>
@@ -69,8 +73,8 @@ namespace hex
 
 		void build();
 
-		const HexObject* getTileAt(int x, int y) const;
-		const HexObject* getTileAt(const point& p) const;
+		const HexObject* getTileAt(int x, int y) const ;
+		const HexObject* getTileAt(const point& p) const ;
 		const std::vector<HexObject>& getTiles() const { return tiles_; }
 
 		int getWidth() const { return width_; }
