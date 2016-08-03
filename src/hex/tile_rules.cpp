@@ -26,6 +26,8 @@
 #include "tile_rules.hpp"
 #include "hex_map.hpp"
 
+#include "random.hpp"
+
 namespace hex
 {
 	TerrainRule::TerrainRule(const variant& v)
@@ -301,7 +303,8 @@ namespace hex
 		  center_(v["center"].as_int32(0)),
 		  opacity_(1.0f),
 		  crop_(),
-		  variants_()
+		  variants_(),
+		  variations_()
 	{
 		if(v.has_key("O")) {
 			opacity_ = v["O"]["param"].as_float();
@@ -314,6 +317,9 @@ namespace hex
 			for(const auto& ivar : v["variant"].as_list()) {
 				variants_.emplace_back(ivar);
 			}
+		}
+		if(v.has_key("variations")) {
+			variations_ = v["variations"].as_list_string();
 		}
 	}
 
@@ -328,6 +334,19 @@ namespace hex
 		}
 	}
 
+	std::string TileImage::getName() const
+	{
+		// XXX WIP
+		std::string name = image_name_;
+		if(!variations_.empty()) {
+			auto pos = name.find("@V");
+			ASSERT_LOG(pos != std::string::npos, "Error have variations in image but no @V symbol found to replace in image name." << name);
+			const std::string& var = variations_[rng::generate() % variations_.size()];
+			name = name.substr(0, pos) + var + name.substr(pos + 2);
+		}
+		return name;
+	}
+
 	bool TerrainRule::match(const HexMapPtr& hmap)
 	{
 		if(absolute_position_) {
@@ -338,44 +357,55 @@ namespace hex
 		}
 
 		// ignore rotations for the moment.
-		if(!rotations_.empty()) {
-			return false;
+		std::stringstream ss;
+		for(auto& rot : rotations_) {
+			ss << ";" << rot;
 		}
+		ASSERT_LOG(rotations_.size() == 6, "Set of rotations not of size 6(" << rotations_.size() << ")." << ss.str());
 
 		const auto& map_tiles = hmap->getTiles();
 
 		for(const auto& hex : map_tiles) {
-			if(mod_position_) {
-				auto& pos = hex.getPosition();
-				if((pos.x % mod_position_->x) != 0 || (pos.y % mod_position_->y) != 0) {
-					continue;
-				}
-			}
+			for(int n =0; n != 6; ++n) {
+				std::string r0 = rotations_[n];
+				std::string r1 = rotations_[(n+1)%6];
+				std::string r2 = rotations_[(n+2)%6];
+				std::string r3 = rotations_[(n+3)%6];
+				std::string r4 = rotations_[(n+4)%6];
+				std::string r5 = rotations_[(n+5)%6];
 
-			std::vector<std::pair<const HexObject*, TileRule*>> objs;
-			// No map we expect tiles to have position data.
-			for(const auto& td : tile_data_) {
-				ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
-				const auto& pos_data = td->getPosition();
-				for(const auto& p : pos_data) {
-					auto new_obj = hmap->getTileAt(p.x + hex.getX(), p.y + hex.getY());
-					if(!td->match(new_obj, this)) {
-						if(new_obj) {
-							new_obj->clearTempFlags();
-						}
-						break;
-					}
-					if(new_obj) {
-						if(!td->getImage(new_obj).empty()) {
-							objs.emplace_back(new_obj, td.get());
-						}
+				if(mod_position_) {
+					auto& pos = hex.getPosition();
+					if((pos.x % mod_position_->x) != 0 || (pos.y % mod_position_->y) != 0) {
+						continue;
 					}
 				}
-			}
-			// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
-			for(auto& obj : objs) {
-				obj.first->setTempFlags();
-				LOG_INFO("tile(" << obj.first->getFullTypeString() << ") at " << obj.first->getPosition() << ": " << obj.second->getImage(obj.first));
+
+				std::vector<std::pair<const HexObject*, TileRule*>> objs;
+				// No map we expect tiles to have position data.
+				for(const auto& td : tile_data_) {
+					ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
+					const auto& pos_data = td->getPosition();
+					for(const auto& p : pos_data) {
+						auto new_obj = hmap->getTileAt(p.x + hex.getX(), p.y + hex.getY());
+						if(!td->match(new_obj, this)) {
+							if(new_obj) {
+								new_obj->clearTempFlags();
+							}
+							break;
+						}
+						if(new_obj) {
+							if(!td->getImage(new_obj).empty()) {
+								objs.emplace_back(new_obj, td.get());
+							}
+					}	
+					}
+				}
+				// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
+				for(auto& obj : objs) {
+					obj.first->setTempFlags();
+					LOG_INFO("tile(" << obj.first->getFullTypeString() << ") at " << obj.first->getPosition() << ": " << obj.second->getImage(obj.first));
+				}
 			}
 		}
 		return false;

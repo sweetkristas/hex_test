@@ -47,7 +47,7 @@ namespace hex
 	{
 	public:
 		explicit TileImage(const variant& v);
-		const std::string& getName() const { return image_name_; }
+		std::string getName() const;
 	private:
 		int layer_;
 		std::string image_name_;
@@ -58,6 +58,7 @@ namespace hex
 		rect crop_;
 		// mask/crop/blit
 		std::vector<TileImageVariant> variants_;
+		std::vector<std::string> variations_;
 	};
 
 	class TileRule

@@ -56,8 +56,12 @@ namespace hex
 			boost::split(types, line, boost::is_any_of(","), boost::token_compress_off);
 			for(const auto& type : types) {
 				std::string full_type = boost::trim_copy(type);
-				std::string type_str = type;
-				auto pos = type_str.find('^');
+				auto pos = full_type.find(' ');
+				if(pos != std::string::npos) {
+					full_type = full_type.substr(pos+1);
+				}
+				std::string type_str = full_type;
+				pos = type_str.find('^');
 				std::string mod_str;
 				if(pos != std::string::npos) {
 					mod_str = type_str.substr(pos + 1);
