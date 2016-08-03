@@ -34,6 +34,9 @@ namespace hex
 	{
 		std::string rot_replace(const std::string& str, const std::vector<std::string>& rs)
 		{
+			if(rs.empty()) {
+				return str;
+			}
 			auto pos = str.find("@R");
 			if(pos == std::string::npos) {
 				return str;
@@ -393,19 +396,21 @@ namespace hex
 
 		// ignore rotations for the moment.
 		ASSERT_LOG(rotations_.size() == 6 || rotations_.empty(), "Set of rotations not of size 6(" << rotations_.size() << ").");
-		const int max_loop = rotations_.size();
+		const int max_loop = rotations_.empty() ? 1 : rotations_.size();
 
 		const auto& map_tiles = hmap->getTiles();
 
 		for(const auto& hex : map_tiles) {
 			for(int n =0; n != max_loop; ++n) {
 				std::vector<std::string> rs;
-				rs.emplace_back(rotations_[n]);
-				rs.emplace_back(rotations_[(n+1)%max_loop]);
-				rs.emplace_back(rotations_[(n+2)%max_loop]);
-				rs.emplace_back(rotations_[(n+3)%max_loop]);
-				rs.emplace_back(rotations_[(n+4)%max_loop]);
-				rs.emplace_back(rotations_[(n+5)%max_loop]);
+				if(!rotations_.empty()) {
+					rs.emplace_back(rotations_[n]);
+					rs.emplace_back(rotations_[(n+1)%max_loop]);
+					rs.emplace_back(rotations_[(n+2)%max_loop]);
+					rs.emplace_back(rotations_[(n+3)%max_loop]);
+					rs.emplace_back(rotations_[(n+4)%max_loop]);
+					rs.emplace_back(rotations_[(n+5)%max_loop]);
+				}
 
 				if(mod_position_) {
 					auto& pos = hex.getPosition();
