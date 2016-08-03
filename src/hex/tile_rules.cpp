@@ -420,32 +420,46 @@ namespace hex
 				}
 
 				// XXX we need to augment this saved data with the rotation set.
-				std::vector<Helper> objs;
-				// No map we expect tiles to have position data.
+				std::vector<const HexObject*> obj_to_set_flags;
+				// We expect tiles to have position data.
+				bool tile_match = true;
 				for(const auto& td : tile_data_) {
 					ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
 					const auto& pos_data = td->getPosition();
+
+					bool match_pos = false;
+
 					for(const auto& p : pos_data) {
 						auto new_obj = hmap->getTileAt(p.x + hex.getX(), p.y + hex.getY());
-						if(!td->match(new_obj, this, rs)) {
+						if(td->match(new_obj, this, rs)) {
+							match_pos = true;
+							obj_to_set_flags.emplace_back(new_obj);
+							break;
+						} else {
 							if(new_obj) {
 								new_obj->clearTempFlags();
 							}
-							break;
 						}
-						if(new_obj) {
-							auto img = td->getImage(new_obj, rs);
-							if(!img.empty()) {
-								objs.emplace_back(new_obj, td.get(), img);
-							}
-						}	
+					}
+					if(!match_pos) {
+						tile_match = false;
+						break;
+					} else {
+						obj_to_set_flags.clear();
 					}
 				}
-				// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
-				for(auto& obj : objs) {
-					obj.obj->setTempFlags();
-					LOG_INFO("tile(" << obj.obj->getFullTypeString() << ") at " << obj.obj->getPosition() << ": " << obj.image_name);
+
+				if(tile_match) {
+					auto img = tile_data_.front()->getImage(&hex, rs);
+					if(!img.empty()) {
+						LOG_INFO("tile(" << hex.getFullTypeString() << ") at " << hex.getPosition() << ": " << img);
+					}
 				}
+
+				for(auto& obj : obj_to_set_flags) {
+					obj->setTempFlags();
+				}
+
 			}
 		}
 		return false;
