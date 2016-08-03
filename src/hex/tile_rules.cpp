@@ -243,14 +243,20 @@ namespace hex
 		type_.emplace_back("*");
 	}
 
-	std::string TileRule::getImage(const HexObject* obj, const std::vector<std::string>& rs)
+	std::string TileRule::getImage(const HexObject* obj, const std::vector<std::string>& rs, int* layer)
 	{
 		// this is still WIP
 		if(image_) {
+			if(layer) {
+				*layer = image_->getLayer();
+			}
 			return rot_replace(image_->getName(), rs);
 		}
 		auto img = parent_.lock()->getImage();
 		if(img) {
+			if(layer) {
+				*layer = img->getLayer();
+			}
 			return rot_replace(img->getName(), rs);
 		}
 		return std::string();
@@ -450,9 +456,10 @@ namespace hex
 				}
 
 				if(tile_match) {
-					auto img = tile_data_.front()->getImage(&hex, rs);
+					int layer = -1000;
+					auto img = tile_data_.front()->getImage(&hex, rs, &layer);
 					if(!img.empty()) {
-						LOG_INFO("tile(" << hex.getFullTypeString() << ") at " << hex.getPosition() << ": " << img);
+						LOG_INFO("tile(" << hex.getFullTypeString() << ") at " << hex.getPosition() << ": " << img << ", layer=" << layer);
 					}
 				}
 

@@ -48,6 +48,11 @@ namespace hex
 	public:
 		explicit TileImage(const variant& v);
 		std::string getName() const;
+		int getLayer() const { return layer_; }
+		const point& getBase() const { return base_; }
+		const point& getCenter() const { return center_; }
+		float getOpacity() const { return opacity_; }
+		const rect& getCropRect() const { return crop_; }
 	private:
 		int layer_;
 		std::string image_name_;
@@ -71,7 +76,7 @@ namespace hex
 		void addPosition(const point& p) { position_.emplace_back(p); }
 		int getMapPos() const { return pos_; }
 		bool match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rotations);
-		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs);
+		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs, int* layer);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;
