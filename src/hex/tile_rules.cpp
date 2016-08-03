@@ -357,22 +357,19 @@ namespace hex
 		}
 
 		// ignore rotations for the moment.
-		std::stringstream ss;
-		for(auto& rot : rotations_) {
-			ss << ";" << rot;
-		}
-		ASSERT_LOG(rotations_.size() == 6, "Set of rotations not of size 6(" << rotations_.size() << ")." << ss.str());
+		ASSERT_LOG(rotations_.size() == 6 || rotations_.empty(), "Set of rotations not of size 6(" << rotations_.size() << ").");
+		const int max_loop = rotations_.size();
 
 		const auto& map_tiles = hmap->getTiles();
 
 		for(const auto& hex : map_tiles) {
-			for(int n =0; n != 6; ++n) {
+			for(int n =0; n != max_loop; ++n) {
 				std::string r0 = rotations_[n];
-				std::string r1 = rotations_[(n+1)%6];
-				std::string r2 = rotations_[(n+2)%6];
-				std::string r3 = rotations_[(n+3)%6];
-				std::string r4 = rotations_[(n+4)%6];
-				std::string r5 = rotations_[(n+5)%6];
+				std::string r1 = rotations_[(n+1)%max_loop];
+				std::string r2 = rotations_[(n+2)%max_loop];
+				std::string r3 = rotations_[(n+3)%max_loop];
+				std::string r4 = rotations_[(n+4)%max_loop];
+				std::string r5 = rotations_[(n+5)%max_loop];
 
 				if(mod_position_) {
 					auto& pos = hex.getPosition();

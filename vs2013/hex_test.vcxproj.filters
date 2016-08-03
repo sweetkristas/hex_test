@@ -333,6 +333,9 @@
     <ClInclude Include="..\src\hex\hex_map.hpp">
       <Filter>Header Files\hex</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\random.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\filesystem.cpp">
@@ -562,6 +565,9 @@
     </ClCompile>
     <ClCompile Include="..\src\hex\hex_map.cpp">
       <Filter>Source Files\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\random.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
