@@ -70,8 +70,8 @@ namespace hex
 		const std::vector<point>& getPosition() const { return position_; }
 		void addPosition(const point& p) { position_.emplace_back(p); }
 		int getMapPos() const { return pos_; }
-		bool match(const HexObject* obj, TerrainRule* tr);
-		std::string getImage(const HexObject* obj);
+		bool match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rotations);
+		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;

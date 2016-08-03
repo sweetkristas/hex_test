@@ -167,7 +167,11 @@ int main(int argc, char* argv[])
 	auto rman = std::make_shared<RenderManager>();
 	auto rq = rman->addQueue(0, "opaques");
 
-	auto hmap = hex::HexMap::create(data_path + "maps/test01.map");
+	std::string map_to_use = data_path + "maps/test01.map";
+	if(!args.empty()) {
+		map_to_use = data_path + "maps/" + args[0];
+	}
+	auto hmap = hex::HexMap::create(map_to_use);
 	hmap->build();
 
 	SDL_Event e;

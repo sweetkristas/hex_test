@@ -30,6 +30,32 @@
 
 namespace hex
 {
+	namespace 
+	{
+		std::string rot_replace(const std::string& str, const std::vector<std::string>& rs)
+		{
+			auto pos = str.find("@R");
+			if(pos == std::string::npos) {
+				return str;
+			}
+
+			std::string res;
+			bool done = false;
+			auto start_pos = 0;
+			while(pos != std::string::npos) {
+				res += str.substr(start_pos, pos - start_pos);
+				int index = str[pos + 2] - '0';
+				ASSERT_LOG(index >= 0 && index <= 5, "Invalid @R value: " << index);
+				res += rs[index];
+				start_pos = pos + 3;
+				pos = str.find("@R", start_pos);
+			}
+			res += str.substr(start_pos);
+			//LOG_DEBUG("replaced " << str << " with " << res);
+			return res;
+		}
+	}
+
 	TerrainRule::TerrainRule(const variant& v)
 		: absolute_position_(nullptr),
 		  mod_position_(nullptr),
@@ -214,15 +240,15 @@ namespace hex
 		type_.emplace_back("*");
 	}
 
-	std::string TileRule::getImage(const HexObject* obj)
+	std::string TileRule::getImage(const HexObject* obj, const std::vector<std::string>& rs)
 	{
 		// this is still WIP
 		if(image_) {
-			return image_->getName();
+			return rot_replace(image_->getName(), rs);
 		}
 		auto img = parent_.lock()->getImage();
 		if(img) {
-			return img->getName();
+			return rot_replace(img->getName(), rs);
 		}
 		return std::string();
 	}
@@ -258,7 +284,7 @@ namespace hex
 		return true;
 	}
 
-	bool TileRule::match(const HexObject* obj, TerrainRule* tr)
+	bool TileRule::match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rs)
 	{
 		if(obj == nullptr) {
 			for(auto& type : type_) {
@@ -271,23 +297,24 @@ namespace hex
 		const std::string& hex_type_full = obj->getFullTypeString();
 		const std::string& hex_type = obj->getTypeString();
 		for(auto& type : type_) {
+			type = rot_replace(type, rs);
 			if(type == "*" || string_match(type, hex_type)) {
 				const auto& has_flag = has_flag_.empty() ? tr->getHasFlags() : has_flag_;
 				for(auto& f : has_flag) {
-					if(!obj->hasFlag(f)) {
+					if(!obj->hasFlag(rot_replace(f, rs))) {
 						return false;
 					}
 				}
 				const auto& no_flag = no_flag_.empty() ? tr->getNoFlags() : no_flag_;
 				for(auto& f : no_flag) {
-					if(obj->hasFlag(f)) {
+					if(obj->hasFlag(rot_replace(f, rs))) {
 						return false;
 					}
 				}
 
 				const auto& set_flag = set_flag_.empty() ? tr->getSetFlags() : set_flag_;
 				for(auto& f : set_flag) {
-					obj->addTempFlag(f);
+					obj->addTempFlag(rot_replace(f, rs));
 				}
 				return true;
 			}
@@ -347,11 +374,19 @@ namespace hex
 		return name;
 	}
 
+	struct Helper
+	{
+		Helper(const HexObject* o, TileRule* t, const std::string& img) : obj(o), tr(t), image_name(img) {}
+		const HexObject* obj;
+		TileRule* tr;
+		std::string image_name;
+	};
+
 	bool TerrainRule::match(const HexMapPtr& hmap)
 	{
 		if(absolute_position_) {
 			ASSERT_LOG(tile_data_.size() != 1, "Number of tiles is not correct in rule.");
-			if(!tile_data_[0]->match(hmap->getTileAt(*absolute_position_), this)) {
+			if(!tile_data_[0]->match(hmap->getTileAt(*absolute_position_), this, std::vector<std::string>())) {
 				return false;
 			}
 		}
@@ -364,12 +399,13 @@ namespace hex
 
 		for(const auto& hex : map_tiles) {
 			for(int n =0; n != max_loop; ++n) {
-				std::string r0 = rotations_[n];
-				std::string r1 = rotations_[(n+1)%max_loop];
-				std::string r2 = rotations_[(n+2)%max_loop];
-				std::string r3 = rotations_[(n+3)%max_loop];
-				std::string r4 = rotations_[(n+4)%max_loop];
-				std::string r5 = rotations_[(n+5)%max_loop];
+				std::vector<std::string> rs;
+				rs.emplace_back(rotations_[n]);
+				rs.emplace_back(rotations_[(n+1)%max_loop]);
+				rs.emplace_back(rotations_[(n+2)%max_loop]);
+				rs.emplace_back(rotations_[(n+3)%max_loop]);
+				rs.emplace_back(rotations_[(n+4)%max_loop]);
+				rs.emplace_back(rotations_[(n+5)%max_loop]);
 
 				if(mod_position_) {
 					auto& pos = hex.getPosition();
@@ -378,30 +414,32 @@ namespace hex
 					}
 				}
 
-				std::vector<std::pair<const HexObject*, TileRule*>> objs;
+				// XXX we need to augment this saved data with the rotation set.
+				std::vector<Helper> objs;
 				// No map we expect tiles to have position data.
 				for(const auto& td : tile_data_) {
 					ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
 					const auto& pos_data = td->getPosition();
 					for(const auto& p : pos_data) {
 						auto new_obj = hmap->getTileAt(p.x + hex.getX(), p.y + hex.getY());
-						if(!td->match(new_obj, this)) {
+						if(!td->match(new_obj, this, rs)) {
 							if(new_obj) {
 								new_obj->clearTempFlags();
 							}
 							break;
 						}
 						if(new_obj) {
-							if(!td->getImage(new_obj).empty()) {
-								objs.emplace_back(new_obj, td.get());
+							auto img = td->getImage(new_obj, rs);
+							if(!img.empty()) {
+								objs.emplace_back(new_obj, td.get(), img);
 							}
-					}	
+						}	
 					}
 				}
 				// XXX All tiles match at this point. We need to assign set flags to tiles and set the correct image.
 				for(auto& obj : objs) {
-					obj.first->setTempFlags();
-					LOG_INFO("tile(" << obj.first->getFullTypeString() << ") at " << obj.first->getPosition() << ": " << obj.second->getImage(obj.first));
+					obj.obj->setTempFlags();
+					LOG_INFO("tile(" << obj.obj->getFullTypeString() << ") at " << obj.obj->getPosition() << ": " << obj.image_name);
 				}
 			}
 		}
