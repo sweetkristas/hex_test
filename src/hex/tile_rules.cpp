@@ -467,8 +467,10 @@ namespace hex
 
 	void TileRule::applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot)
 	{
-		/// XXX process mask and blit
-		hex->addImage(image_->getName(), image_->getLayer(), image_->getBase(), image_->getCenter(), image_->getCropRect(), image_->getOpacity());
+		if(image_) {
+			/// XXX process mask and blit
+			hex->addImage(image_->getName(), image_->getLayer(), image_->getBase(), image_->getCenter(), image_->getCropRect(), image_->getOpacity());
+		}
 	}
 
 	TileImage::TileImage(const variant& v)
@@ -523,14 +525,6 @@ namespace hex
 		return name;
 	}
 
-	struct Helper
-	{
-		Helper(const HexObject* o, TileRule* t, const std::string& img) : obj(o), tr(t), image_name(img) {}
-		const HexObject* obj;
-		TileRule* tr;
-		std::string image_name;
-	};
-
 	bool TerrainRule::match(const HexMapPtr& hmap)
 	{
 		if(absolute_position_) {
@@ -545,7 +539,7 @@ namespace hex
 		const int max_loop = rotations_.empty() ? 1 : rotations_.size();
 
 		for(auto& hex : hmap->getTilesMutable()) {
-			hex->clearImages();
+			hex.clearImages();
 			for(int rot = 0; rot != max_loop; ++rot) {
 
 				if(mod_position_) {
