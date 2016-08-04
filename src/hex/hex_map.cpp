@@ -155,4 +155,14 @@ namespace hex
 		return parent_->getTileAt(p);
 	}
 
+	void HexObject::clearImages()
+	{
+		images_.clear();
+	}
+
+	// All these arguments should be already compiled at an earlier layer.
+	void HexObject::addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity)
+	{
+		images_.emplace_back(name, layer, base, center, crop, opacity);
+	}
 }

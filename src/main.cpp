@@ -22,6 +22,7 @@
 #include "unit_test.hpp"
 #include "json.hpp"
 #include "hex.hpp"
+#include "unit_test.hpp"
 
 #if defined(_MSC_VER)
 #define WIN32_LEAN_AND_MEAN
@@ -108,6 +109,11 @@ int main(int argc, char* argv[])
 	SDL::SDL_ptr manager(new SDL::SDL());
 	//SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 	SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_DEBUG);
+
+	if(!test::run_tests()) {
+		// Just exit if some tests failed.
+		exit(1);
+}
 
 #if defined(__linux__)
 	const std::string data_path = "data/";

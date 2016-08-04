@@ -75,8 +75,10 @@ namespace hex
 		const std::vector<point>& getPosition() const { return position_; }
 		void addPosition(const point& p) { position_.emplace_back(p); }
 		int getMapPos() const { return pos_; }
-		bool match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rotations);
-		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs, int* layer);
+		bool match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rotations, int rot);
+		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs, int rot, int* layer);
+		std::string toString();
+		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;
@@ -99,12 +101,13 @@ namespace hex
 		const std::vector<std::string>& getHasFlags() const { return has_flag_; }
 		const std::vector<std::string>& getRotations() const { return rotations_; }
 		const std::vector<std::string>& getMap() const { return map_; }
-		const TileImage* getImage() const { return image_.get(); }
+		const std::vector<std::unique_ptr<TileImage>>& getImages() const { return image_; }
 
 		bool match(const HexMapPtr& hmap);
 		void preProcessMap(const variant& tiles);
 
 		static TerrainRulePtr create(const variant& v);
+		void applyImage(HexObject* hex);
 	private:
 		// constrains the rule to given absolute map coordinates
 		std::unique_ptr<point> absolute_position_;
@@ -115,8 +118,10 @@ namespace hex
 		std::vector<std::string> no_flag_;
 		std::vector<std::string> has_flag_;
 		std::vector<std::string> map_;
+		// center co-ordinate.
+		point center_;
 
 		std::vector<TileRulePtr> tile_data_;
-		std::unique_ptr<TileImage> image_;
+		std::vector<std::unique_ptr<TileImage>> image_;
 	};
 }

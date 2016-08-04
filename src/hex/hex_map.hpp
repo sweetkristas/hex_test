@@ -32,6 +32,25 @@
 
 namespace hex
 {
+	struct ImageHolder 
+	{
+		ImageHolder(const std::string& n, int l, const point& b, const point& c, const rect& crp, float o)
+			: name(n), 
+			  layer(l),
+			  base(b),
+			  center(c),
+			  crop(crp),
+			  opacity(o)
+		{
+		}
+		std::string name;
+		int layer;
+		point base;
+		point center;
+		rect crop;
+		float opacity;
+	};
+
 	// Realisation of a HexTile
 	class HexObject
 	{
@@ -50,11 +69,14 @@ namespace hex
 		const std::string& getFullTypeString() const { return full_type_str_; }
 		const HexObject* getTileAt(int x, int y) const;
 		const HexObject* getTileAt(const point& p) const; 
-		bool hasFlag(const std::string& flag) const { return flags_.find(flag) != flags_.end(); }
+		bool hasFlag(const std::string& flag) const { return flags_.find(flag) != flags_.end() || temp_flags_.find(flag) != temp_flags_.end(); }
 		void addFlag(const std::string& flag) { flags_.emplace(flag); }
-		void addTempFlag(const std::string& flag) const { temp_flags_.emplace_back(flag); }
+		void addTempFlag(const std::string& flag) const { temp_flags_.emplace(flag); }
 		void clearTempFlags() const { temp_flags_.clear(); }
 		void setTempFlags() const { std::copy(temp_flags_.begin(), temp_flags_.end(), inserter(flags_, flags_.begin())); }
+		void clearImages();
+		void addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity);
+		const std::vector<ImageHolder>& getImages() const { return images_; }
 	private:
 		const HexMap* parent_;
 		point pos_;
@@ -63,7 +85,8 @@ namespace hex
 		std::string mod_str_;
 		std::string full_type_str_;
 		mutable std::set<std::string> flags_;
-		mutable std::vector<std::string> temp_flags_;
+		mutable std::set<std::string> temp_flags_;
+		std::vector<ImageHolder> images_;
 	};
 
 	class HexMap : public std::enable_shared_from_this<HexMap>
@@ -78,6 +101,7 @@ namespace hex
 		const HexObject* getTileAt(int x, int y) const ;
 		const HexObject* getTileAt(const point& p) const ;
 		const std::vector<HexObject>& getTiles() const { return tiles_; }
+		std::vector<HexObject>& getTilesMutable() { return tiles_; }
 
 		int getWidth() const { return width_; }
 		int getHeight() const { return height_; }

@@ -336,6 +336,15 @@
     <ClInclude Include="..\src\random.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\hex\hex_helper.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\hex_renderable.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\hex\hex_renderable_fwd.hpp">
+      <Filter>Header Files\hex</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\filesystem.cpp">
@@ -568,6 +577,12 @@
     </ClCompile>
     <ClCompile Include="..\src\random.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\hex_helper.cpp">
+      <Filter>Source Files\hex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hex\hex_renderable.cpp">
+      <Filter>Source Files\hex</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
