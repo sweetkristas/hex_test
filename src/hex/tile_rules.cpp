@@ -24,6 +24,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "hex_helper.hpp"
+#include "hex_loader.hpp"
 #include "hex_map.hpp"
 #include "tile_rules.hpp"
 
@@ -269,7 +270,18 @@ namespace hex
 
 	void TerrainRule::applyImage(HexObject* hex)
 	{
-		/// XXX
+		for(const auto& img : image_) {
+			if(img) {
+				/// XXX process mask and blit
+				std::string fname = rot_replace(img->getName(), std::vector<std::string>(), 0);
+				hex->addImage(fname, 
+					img->getLayer(), 
+					img->getBase(), 
+					img->getCenter(),
+					img->getCropRect(),
+					img->getOpacity());
+			}
+		}
 	}
 
 	TerrainRulePtr TerrainRule::create(const variant& v)
@@ -412,6 +424,23 @@ namespace hex
 		return std::string();
 	}
 
+	bool TileRule::matchFlags(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rs, int rot)
+	{
+		const auto& has_flag = has_flag_.empty() ? tr->getHasFlags() : has_flag_;
+		for(auto& f : has_flag) {
+			if(!obj->hasFlag(rot_replace(f, rs, rot))) {
+				return false;
+			}
+		}
+		const auto& no_flag = no_flag_.empty() ? tr->getNoFlags() : no_flag_;
+		for(auto& f : no_flag) {
+			if(obj->hasFlag(rot_replace(f, rs, rot))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool TileRule::match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rs, int rot)
 	{
 		if(obj == nullptr) {
@@ -437,19 +466,9 @@ namespace hex
 				continue;
 			}
 			if(matches && invert_match == false) {
-				const auto& has_flag = has_flag_.empty() ? tr->getHasFlags() : has_flag_;
-				for(auto& f : has_flag) {
-					if(!obj->hasFlag(rot_replace(f, rs, rot))) {
-						return false;
-					}
+				if(!matchFlags(obj, tr, rs, rot)) {
+					return false;
 				}
-				const auto& no_flag = no_flag_.empty() ? tr->getNoFlags() : no_flag_;
-				for(auto& f : no_flag) {
-					if(obj->hasFlag(rot_replace(f, rs, rot))) {
-						return false;
-					}
-				}
-
 				tile_match = true;
 				break;
 			}
@@ -469,7 +488,12 @@ namespace hex
 	{
 		if(image_) {
 			/// XXX process mask and blit
-			hex->addImage(image_->getName(), image_->getLayer(), image_->getBase(), image_->getCenter(), image_->getCropRect(), image_->getOpacity());
+			hex->addImage(rot_replace(image_->getName(), rs, rot), 
+				image_->getLayer(), 
+				image_->getBase(), 
+				image_->getCenter(),
+				image_->getCropRect(),
+				image_->getOpacity());
 		}
 	}
 
@@ -477,8 +501,8 @@ namespace hex
 		: layer_(v["layer"].as_int32(-1000)),
 		  image_name_(v["name"].as_string_default("")),
 		  random_start_(v["random_start"].as_bool(true)),
-		  base_(v["base"].as_int32(0)),
-		  center_(v["center"].as_int32(0)),
+		  base_(),
+		  center_(),
 		  opacity_(1.0f),
 		  crop_(),
 		  variants_(),
@@ -490,14 +514,31 @@ namespace hex
 		if(v.has_key("CROP")) {
 			crop_ = rect(v["CROP"]["param"]);
 		}
-		
+		if(v.has_key("base")) {
+			base_ = point(v["base"]);
+		}
+		if(v.has_key("center")) {
+			center_ = point(v["center"]);
+		}
 		if(v.has_key("variant")) {
 			for(const auto& ivar : v["variant"].as_list()) {
 				variants_.emplace_back(ivar);
 			}
 		}
 		if(v.has_key("variations")) {
-			variations_ = v["variations"].as_list_string();
+			auto vars = v["variations"].as_list_string();
+			auto pos = image_name_.find("@V");
+			auto pos_r = image_name_.find("@R");
+			if(pos_r != std::string::npos) {
+				variations_ = vars;
+			} else {
+				for(const auto& var : vars) {
+					std::string name = image_name_.substr(0, pos) + var + image_name_.substr(pos + 2);
+					if(terrain_info_exists(name)) {
+						variations_.emplace_back(var);
+					}
+				}
+			}
 		}
 	}
 
@@ -516,10 +557,10 @@ namespace hex
 	{
 		// XXX WIP
 		std::string name = image_name_;
-		if(!variations_.empty()) {
-			auto pos = name.find("@V");
-			ASSERT_LOG(pos != std::string::npos, "Error have variations in image but no @V symbol found to replace in image name." << name);
-			const std::string& var = variations_[rng::generate() % variations_.size()];
+		auto pos = name.find("@V");
+		if(!variations_.empty() && pos != std::string::npos) {
+			int index = rng::generate() % variations_.size();
+			const std::string& var = variations_[index];
 			name = name.substr(0, pos) + var + name.substr(pos + 2);
 		}
 		return name;
@@ -539,7 +580,6 @@ namespace hex
 		const int max_loop = rotations_.empty() ? 1 : rotations_.size();
 
 		for(auto& hex : hmap->getTilesMutable()) {
-			hex.clearImages();
 			for(int rot = 0; rot != max_loop; ++rot) {
 
 				if(mod_position_) {
@@ -564,7 +604,9 @@ namespace hex
 						auto new_obj = hmap->getTileAt(rot_p);
 						if(td->match(new_obj, this, rotations_, rot)) {
 							match_pos = true;
-							obj_to_set_flags.emplace_back(new_obj);
+							if(new_obj) {
+								obj_to_set_flags.emplace_back(new_obj);
+							}
 							break;
 						} else {
 							if(new_obj) {
@@ -574,9 +616,8 @@ namespace hex
 					}
 					if(!match_pos) {
 						tile_match = false;
-						break;
-					} else {
 						obj_to_set_flags.clear();
+						break;
 					}
 				}
 

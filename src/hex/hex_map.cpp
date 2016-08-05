@@ -28,6 +28,7 @@
 #include "hex_map.hpp"
 #include "hex_tile.hpp"
 #include "hex_loader.hpp"
+#include "hex_renderable.hpp"
 #include "profile_timer.hpp"
 #include "tile_rules.hpp"
 
@@ -39,7 +40,9 @@ namespace hex
 		  y_(0),
 		  width_(0),
 		  height_(0),
-		  starting_positions_()
+		  starting_positions_(),
+		  changed_(false),
+		  renderable_(nullptr)
 	{
 		int max_x = -1;
 		// assume a old-style map.
@@ -136,6 +139,14 @@ namespace hex
 		return std::make_shared<HexMap>(v);
 	}
 
+	void HexMap::process()
+	{
+		if(changed_) {
+			changed_ = false;
+			renderable_->update(width_, height_, tiles_);
+		}
+	}
+
 	HexObject::HexObject(int x, int y, const HexTilePtr & tile, const HexMap* parent)
 		: parent_(parent),
 		  pos_(x, y),
@@ -155,6 +166,13 @@ namespace hex
 		return parent_->getTileAt(p);
 	}
 
+	void HexObject::setTempFlags() const
+	{
+		for(const auto& f : temp_flags_) {
+			flags_.emplace(f);
+		}
+	}
+
 	void HexObject::clearImages()
 	{
 		images_.clear();
@@ -163,6 +181,7 @@ namespace hex
 	// All these arguments should be already compiled at an earlier layer.
 	void HexObject::addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity)
 	{
+		LOG_INFO("Hex" << pos_ << ": " << name << "; layer: " << layer << "; base: " << base);
 		images_.emplace_back(name, layer, base, center, crop, opacity);
 	}
 }

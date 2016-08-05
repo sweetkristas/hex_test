@@ -79,6 +79,7 @@ namespace hex
 		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs, int rot, int* layer);
 		std::string toString();
 		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
+		bool matchFlags(const HexObject* hex, TerrainRule* tr, const std::vector<std::string>& rs=std::vector<std::string>(), int rot=0);
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;

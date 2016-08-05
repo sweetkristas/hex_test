@@ -23,9 +23,11 @@
 
 #include <set>
 
+#include "hex_helper.hpp"
+#include "hex_loader.hpp"
+#include "hex_map.hpp"
 #include "hex_renderable.hpp"
 #include "hex_tile.hpp"
-#include "hex_map.hpp"
 
 #include "Shaders.hpp"
 #include "SceneGraph.hpp"
@@ -40,6 +42,8 @@ namespace hex
 	namespace 
 	{
 		rng::Seed hex_tile_seed;
+
+		const int g_hex_tile_size = 72;
 	}
 
 	SceneNodeRegistrar<MapNode> psc_register("hex_map");
@@ -63,19 +67,62 @@ namespace hex
 		}
 	}
 
+	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& hex_pixel_pos)
+	{
+		point p = hex_pixel_pos + base;
+		if(!borders.empty()) {
+			p.x -= borders[0];
+			p.y -= borders[1];
+		}
+		const float vx1 = static_cast<float>(p.x);
+		const float vy1 = static_cast<float>(p.y);
+		const float vx2 = static_cast<float>(p.x + w);
+		const float vy2 = static_cast<float>(p.y + h);
+
+		coords->emplace_back(glm::vec2(vx1, vy1), glm::vec2(uv.x1(), uv.y1()));
+		coords->emplace_back(glm::vec2(vx2, vy1), glm::vec2(uv.x2(), uv.y1()));
+		coords->emplace_back(glm::vec2(vx2, vy2), glm::vec2(uv.x2(), uv.y2()));
+
+		coords->emplace_back(glm::vec2(vx2, vy2), glm::vec2(uv.x2(), uv.y2()));
+		coords->emplace_back(glm::vec2(vx1, vy1), glm::vec2(uv.x1(), uv.y1()));
+		coords->emplace_back(glm::vec2(vx1, vy2), glm::vec2(uv.x1(), uv.y2()));
+	}
+
 	void MapNode::update(int width, int height, const std::vector<HexObject>& tiles)
 	{
 		layers_.clear();
 		clear();
 
-		std::map<int, MapLayer> test;
+		std::map<int, std::pair<MapLayerPtr, std::vector<KRE::vertex_texcoord>>> map_layers;
 		for(auto& hex : tiles) {
 			auto images = hex.getImages();
 			for(auto& img : images) {
-				auto& XX = test[img.layer];
+				auto& layer = map_layers[img.layer];
+				layer.first.reset(new MapLayer);
+				rect area;
+				std::vector<int> borders;
+				auto& tex = get_terrain_texture(img.name, &area, &borders);
+				if(tex) {
+					layer.first->setTexture(tex);
+					add_tex_coords(&layer.second, 
+						tex->getTextureCoords(0, area), 
+						area.w(), 
+						area.h(), 
+						borders, 
+						img.base, 
+						img.center, 
+						get_pixel_pos_from_tile_pos(hex.getPosition(), 
+						g_hex_tile_size));
+				}
 			}
 		}
-		std::vector<KRE::vertex_texcoord> coords;
+
+		for(auto& layer : map_layers) {
+			layer.second.first->updateAttributes(&layer.second.second);
+			layer.second.first->setOrder(layer.first);
+			layers_.emplace_back(layer.second.first);
+			attachObject(layer.second.first);
+		}
 	}
 
 	MapLayer::MapLayer()

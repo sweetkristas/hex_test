@@ -28,6 +28,7 @@
 
 #include "geometry.hpp"
 #include "hex_fwd.hpp"
+#include "hex_renderable_fwd.hpp"
 #include "variant.hpp"
 
 namespace hex
@@ -73,7 +74,7 @@ namespace hex
 		void addFlag(const std::string& flag) { flags_.emplace(flag); }
 		void addTempFlag(const std::string& flag) const { temp_flags_.emplace(flag); }
 		void clearTempFlags() const { temp_flags_.clear(); }
-		void setTempFlags() const { std::copy(temp_flags_.begin(), temp_flags_.end(), inserter(flags_, flags_.begin())); }
+		void setTempFlags() const;
 		void clearImages();
 		void addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity);
 		const std::vector<ImageHolder>& getImages() const { return images_; }
@@ -108,6 +109,12 @@ namespace hex
 
 		static HexMapPtr create(const std::string& filename);
 		static HexMapPtr create(const variant& v);
+
+		void setRenderable(MapNodePtr renderable) { 
+			renderable_ = renderable; 
+			changed_ = true; 
+		}
+		void process();
 	private:
 		std::vector<HexObject> tiles_;
 		int x_;
@@ -120,5 +127,7 @@ namespace hex
 			std::string ref;
 		};
 		std::vector<StartingPosition> starting_positions_;
+		bool changed_;
+		MapNodePtr renderable_;
 	};
 }

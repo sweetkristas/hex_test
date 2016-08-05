@@ -26,13 +26,16 @@
 #include "variant.hpp"
 #include "hex_fwd.hpp"
 
+#include "Texture.hpp"
+
 namespace hex
 {
 	typedef std::vector<hex::TerrainRulePtr> terrain_rule_type;
 
 	HexTilePtr get_tile_from_type(const std::string& type_str);
 	const terrain_rule_type& get_terrain_rules();
+	KRE::TexturePtr get_terrain_texture(const std::string& filename, rect* area, std::vector<int>* borders);
+	bool terrain_info_exists(const std::string& name);
 
-	void load_tile_data(const variant& v);
-	void load_terrain_data(const variant& v);
+	void load(const std::string& base_path);
 }

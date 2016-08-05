@@ -124,4 +124,17 @@ namespace hex
 		}
 	}
 
+	point get_pixel_pos_from_tile_pos(const point& p, int HexTileSize)
+	{
+		return get_pixel_pos_from_tile_pos(p.x, p.y, HexTileSize);
+	}
+
+	point get_pixel_pos_from_tile_pos(int x, int y, int HexTileSize)
+	{
+		const int HexTileSizeHalf = HexTileSize/2;
+		const int HexTileSizeThreeQuarters = (HexTileSize*3)/4;
+		const int tx = x*HexTileSizeThreeQuarters;
+		const int ty = HexTileSize*y + (abs(x)%2)*HexTileSizeHalf;
+		return point(tx, ty);
+	}
 }

@@ -38,5 +38,7 @@ namespace hex
 	point cube_to_oddq_coords(int x1, int y1, int z1);
 	std::vector<point> line(const point& p1, const point& p2);
 	float rotation_between(const point& p1, const point& p2);
+	point get_pixel_pos_from_tile_pos(const point& p, int HexTileSize);
+	point get_pixel_pos_from_tile_pos(int x, int y, int HexTileSize);
 }
 

@@ -127,19 +127,6 @@ int main(int argc, char* argv[])
 	KRE::FontDriver::setAvailableFonts(font_files);
 	KRE::FontDriver::setFontProvider("stb");
 
-	// Load hex data from files
-	try {
-		hex::load_tile_data(json::parse_from_file(data_path + "terrain.cfg"));
-	} catch(json::parse_error& e) {		
-		ASSERT_LOG(false, "Error parsing hex " << (data_path + "terrain.cfg") << " file data: " << e.what());
-	}
-	try {
-		hex::load_terrain_data(json::parse_from_file(data_path + "terrain-graphics.cfg"));
-	} catch(json::parse_error& e) {		
-		ASSERT_LOG(false, "Error parsing hex " << (data_path + "terrain-graphics.cfg") << " file data: " << e.what());
-	}
-
-
 	WindowManager wm("SDL");
 
 	variant_builder hints;
@@ -173,12 +160,18 @@ int main(int argc, char* argv[])
 	auto rman = std::make_shared<RenderManager>();
 	auto rq = rman->addQueue(0, "opaques");
 
+	hex::load(data_path);
+
 	std::string map_to_use = data_path + "maps/test01.map";
 	if(!args.empty()) {
 		map_to_use = data_path + "maps/" + args[0];
 	}
 	auto hmap = hex::HexMap::create(map_to_use);
 	hmap->build();
+	hex::MapNodePtr hex_renderable;
+	hex_renderable = std::dynamic_pointer_cast<hex::MapNode>(scene->createNode("hex_map"));
+	hmap->setRenderable(hex_renderable);
+	scene->getRootNode()->attachNode(hex_renderable);
 
 	SDL_Event e;
 	bool done = false;
@@ -221,6 +214,11 @@ int main(int argc, char* argv[])
 
 		//main_wnd->setClearColor(KRE::Color::colorWhite());
 		main_wnd->clear(ClearFlags::ALL);
+
+		hmap->process();
+
+		scene->renderScene(rman);
+		rman->render(main_wnd);
 
 		// Called once a cycle before rendering.
 		Uint32 current_tick_time = SDL_GetTicks();

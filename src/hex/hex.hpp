@@ -26,3 +26,4 @@
 #include "hex_fwd.hpp"
 #include "hex_loader.hpp"
 #include "hex_map.hpp"
+#include "hex_renderable.hpp"
