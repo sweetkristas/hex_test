@@ -80,9 +80,17 @@ namespace hex
 		// Load terrain textures first
 		profile::manager pman("load_hex_textures");
 		sys::file_path_map files;
+// temporary cheap hack
+#ifdef __linux__
+		sys::get_unique_files("images/terrain/", files);
+#endif
+#ifdef _MSC_VER
 		sys::get_unique_files("../images/terrain/", files);
+#endif
 		for(const auto& p : files) {
-			get_textures().emplace("terrain/" + p.first, KRE::Texture::createTexture(p.second));
+			auto pos = p.second.find("images/");
+			std::string fname = p.second.substr(pos + 7);
+			get_textures().emplace("terrain/" + p.first, KRE::Texture::createTexture(fname));
 		}
 
 		// Load hex data from files -- order of initialization is important.
@@ -180,7 +188,13 @@ namespace hex
 		const auto& tg_data = v["terrain_graphics"].as_list();
 		for(const auto& tg : tg_data) {
 			ASSERT_LOG(tg.is_map(), "Expected inner items of 'terrain_type' to be maps." << tg.to_debug_string());
-			::get_terrain_rules().emplace_back(TerrainRule::create(tg));
+			auto tr = TerrainRule::create(tg);
+			if(tr->tryEliminate()) {
+				::get_terrain_rules().emplace_back(tr);
+				LOG_INFO("Keep Rule: " << tr->toString());
+			} else {
+				LOG_INFO("Removed Rule: " << tr->toString());
+			}
 		}
 		LOG_INFO("Loaded " << get_terrain_rules().size() << " terrain rules into memory.");
 	}

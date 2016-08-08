@@ -205,6 +205,40 @@ namespace hex
 		}
 	}
 
+	std::string TerrainRule::toString() const
+	{
+		std::stringstream ss;
+		if(absolute_position_) {
+			ss << "x,y: " << *absolute_position_ << "; ";
+		}
+		if(mod_position_) {
+			ss << "mod_x/y: " << *mod_position_ < "; ";
+		}
+		if(!rotations_.empty()) {
+			ss << "rotations:";
+			for(const auto& rot : rotations_) {
+				ss << " " << rot;
+			}
+			ss << "; ";
+		}
+		if(!image_.empty()) {
+			ss << "images: ";
+			for(const auto& img : image_) {
+				ss << " " << img->toString();
+			}
+			ss << "; ";
+		}
+		if(!tile_data_.empty()) {
+			ss << "tiles: ";
+			for(const auto& td : tile_data_) {
+				ss << " " << td->toString();
+			}
+			ss << "; ";
+		}
+	
+		return ss.str();
+	}
+
 	void TerrainRule::preProcessMap(const variant& tiles)
 	{
 		if(!tiles.is_null()) {
@@ -266,14 +300,40 @@ namespace hex
 		if(!td->getPosition().empty()) {
 			tile_data_.emplace_back(std::move(td));
 		}
+
+		if(!map_.empty()) {
+			for(auto& td : tile_data_) {
+				td->center(center_, point());
+			}
+			center_ = point();
+		}
 	}
 
-	void TerrainRule::applyImage(HexObject* hex)
+	// return false to remove this rule. true if it should be kept.
+	bool TerrainRule::tryEliminate()
+	{
+		// Basically we should check these as part of initialisation and discard if the particular combination specified in the 
+		// image tag isn't valid.
+		bool ret = false;
+		for(auto& td : tile_data_) {
+			ret |= td->eliminate(rotations_);
+		}
+		for(auto& img : image_) {
+			const bool keep = img->eliminate(rotations_);
+			ret |= keep;
+			//if(!keep) {
+			//	LOG_INFO("would eliminate: " << img->toString());
+			//}
+		}
+		return ret;
+	}
+
+	void TerrainRule::applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot)
 	{
 		for(const auto& img : image_) {
 			if(img) {
 				/// XXX process mask and blit
-				std::string fname = rot_replace(img->getName(), std::vector<std::string>(), 0);
+				std::string fname = img->getNameForRotation(rot);
 				hex->addImage(fname, 
 					img->getLayer(), 
 					img->getBase(), 
@@ -346,6 +406,32 @@ namespace hex
 		type_.emplace_back("*");
 	}
 
+	void TileRule::center(const point& from_center, const point& to_center)
+	{
+		for(auto& p : position_) {
+	        int x_p, y_p, z_p;
+	        int x_c, y_c, z_c;
+            hex::oddq_to_cube_coords(p, &x_p, &y_p, &z_p);
+            hex::oddq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
+
+            const int p_from_c_x = x_p - x_c;
+            const int p_from_c_y = y_p - y_c;
+            const int p_from_c_z = z_p - z_c;
+			
+			int x_r, y_r, z_r;
+			hex::oddq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
+			p = hex::cube_to_oddq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
+		}
+	}
+
+	bool TileRule::eliminate(const std::vector<std::string>& rotations)
+	{
+		if(image_) {
+			return image_->eliminate(rotations);
+		}
+		return false;
+	}
+
 	std::string TileRule::toString()
 	{
 		std::stringstream ss;
@@ -399,6 +485,10 @@ namespace hex
 			if(no_comma) {
 				no_comma = false;
 			}
+		}
+
+		if(image_) {
+			ss << "; image: " << image_->toString();
 		}
 		return ss.str();
 	}
@@ -506,7 +596,8 @@ namespace hex
 		  opacity_(1.0f),
 		  crop_(),
 		  variants_(),
-		  variations_()
+		  variations_(),
+		  image_files_()
 	{
 		if(v.has_key("O")) {
 			opacity_ = v["O"]["param"].as_float();
@@ -542,6 +633,87 @@ namespace hex
 		}
 	}
 
+	const std::string& TileImage::getNameForRotation(int rot)
+	{
+		auto it = image_files_.find(rot);
+		ASSERT_LOG(it != image_files_.end(), "No image for rotation: " << rot << " : " << toString());
+		ASSERT_LOG(!it->second.empty(), "No files for rotation: " << rot);
+		return it->second[rng::generate() % it->second.size()];
+	}
+
+	std::string TileImage::toString() const
+	{
+		std::stringstream ss;
+		ss << "name:" << image_name_ << "; layer(" << layer_ << "); base: " << base_;
+		if(!variations_.empty()) {
+			ss << "; variations:";
+			for(auto& var : variations_) {
+				ss << " " << var;
+			}
+		}
+		return ss.str();
+	}
+
+	bool TileImage::eliminate(const std::vector<std::string>& rotations)
+	{
+		// Calculate whether particular rotations are valid.
+		// return true if we should keep this, false if there are
+		// no valid terrain images available.
+		auto pos_v = image_name_.find("@V");
+		auto pos_r = image_name_.find("@R");
+		if(pos_r == std::string::npos) {
+			if(!variations_.empty()) {
+				for(const auto& var : variations_) {
+					pos_v = image_name_.find("@V");
+					std::string img_name = image_name_.substr(0, pos_v) + var + image_name_.substr(pos_v + 2);
+					if(terrain_info_exists(img_name)) {
+						image_files_[0].emplace_back(img_name);
+					}
+				}
+			} else {
+				if(terrain_info_exists(image_name_)) {
+					image_files_[0].emplace_back(image_name_);
+				}
+			}
+			return !image_files_.empty();
+		}
+		// XXX should we rotate all the combinations and test them?
+		for(int rot = 0; rot != 6; ++rot) {
+			std::string name = rot_replace(image_name_, rotations, rot);
+			if(pos_v == std::string::npos) {
+				image_files_[rot].emplace_back(name);
+				continue;
+			}
+			for(const auto& var : variations_) {
+				pos_v = name.find("@V");
+				std::string img_name = name.substr(0, pos_v) + var + name.substr(pos_v + 2);
+				//std::stringstream ss;
+				//ss << "Lookup: " << img_name << " ... ";
+				if(terrain_info_exists(img_name)) {
+					image_files_[rot].emplace_back(img_name);
+					//ss << " Success.";
+				} else {
+					//ss << " Failure.";
+				}
+				//LOG_INFO(ss.str());
+			}
+		}
+
+		//if(!image_files_.empty()) {
+		//	std::stringstream ss;
+		//	ss << "Valid Images:";
+		//	for(const auto& p : image_files_) {
+		//		ss << "\n\tRotation:" << p.first;
+		//		for(const auto& fname : p.second) {
+		//			ss << " " << fname;
+		//		}
+		//	}
+		//	LOG_INFO(ss.str());
+		//}
+
+		return !image_files_.empty();
+	}
+
 	TileImageVariant::TileImageVariant(const variant& v)
 		: tod_(v["tod"].as_string_default("")),
 		  name_(v["name"].as_string_default("")),
@@ -575,7 +747,7 @@ namespace hex
 			}
 		}
 
-		// ignore rotations for the moment.
+		// check rotations.
 		ASSERT_LOG(rotations_.size() == 6 || rotations_.empty(), "Set of rotations not of size 6(" << rotations_.size() << ").");
 		const int max_loop = rotations_.empty() ? 1 : rotations_.size();
 
@@ -589,7 +761,7 @@ namespace hex
 					}
 				}
 
-				std::vector<const HexObject*> obj_to_set_flags;
+				std::vector<std::pair<HexObject*, TileRule*>> obj_to_set_flags;
 				// We expect tiles to have position data.
 				bool tile_match = true;
 
@@ -601,11 +773,11 @@ namespace hex
 
 					for(const auto& p : pos_data) {
 						point rot_p = rotate_point(rot, add_hex_coord(center_, hex.getPosition()), add_hex_coord(p, hex.getPosition()));
-						auto new_obj = hmap->getTileAt(rot_p);
+						auto new_obj = const_cast<HexObject*>(hmap->getTileAt(rot_p));
 						if(td->match(new_obj, this, rotations_, rot)) {
 							match_pos = true;
 							if(new_obj) {
-								obj_to_set_flags.emplace_back(new_obj);
+								obj_to_set_flags.emplace_back(std::make_pair(new_obj, td.get()));
 							}
 							break;
 						} else {
@@ -622,8 +794,9 @@ namespace hex
 				}
 
 				if(tile_match) {
+					// XXX need to fix issues when other tiles have images that need to match a different hex
 					tile_data_.front()->applyImage(&hex, rotations_, rot);
-					applyImage(&hex);
+					applyImage(&hex, rotations_, rot);
 
 					//auto img = tile_data_.front()->getImage(&hex, rotations_, rot, &layer);
 					//if(!img.empty()) {
@@ -635,7 +808,8 @@ namespace hex
 				}
 
 				for(auto& obj : obj_to_set_flags) {
-					obj->setTempFlags();
+					obj.first->setTempFlags();
+					//obj.second->applyImage(obj.first, rotations_, rot);
 				}
 
 			}

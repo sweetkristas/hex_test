@@ -70,6 +70,9 @@ namespace hex
 	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& hex_pixel_pos)
 	{
 		point p = hex_pixel_pos + base;
+		if(center.x != 0 || center.y != 0) {
+			p = p + point(center.x/2 - w/2, center.y/2 - h);
+		}
 		if(!borders.empty()) {
 			p.x -= borders[0];
 			p.y -= borders[1];
@@ -93,16 +96,17 @@ namespace hex
 		layers_.clear();
 		clear();
 
-		std::map<int, std::pair<MapLayerPtr, std::vector<KRE::vertex_texcoord>>> map_layers;
+		std::map<std::pair<int,int>, std::pair<MapLayerPtr, std::vector<KRE::vertex_texcoord>>> map_layers;
 		for(auto& hex : tiles) {
 			auto images = hex.getImages();
 			for(auto& img : images) {
-				auto& layer = map_layers[img.layer];
-				layer.first.reset(new MapLayer);
 				rect area;
 				std::vector<int> borders;
-				auto& tex = get_terrain_texture(img.name, &area, &borders);
+				auto tex = get_terrain_texture(img.name, &area, &borders);
 				if(tex) {
+					auto& layer = map_layers[std::make_pair(img.layer,tex->id())];
+					layer.first.reset(new MapLayer);
+
 					layer.first->setTexture(tex);
 					add_tex_coords(&layer.second, 
 						tex->getTextureCoords(0, area), 
@@ -119,7 +123,7 @@ namespace hex
 
 		for(auto& layer : map_layers) {
 			layer.second.first->updateAttributes(&layer.second.second);
-			layer.second.first->setOrder(layer.first);
+			layer.second.first->setOrder(layer.first.first + layer.first.second);
 			layers_.emplace_back(layer.second.first);
 			attachObject(layer.second.first);
 		}

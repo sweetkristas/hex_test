@@ -53,6 +53,9 @@ namespace hex
 		const point& getCenter() const { return center_; }
 		float getOpacity() const { return opacity_; }
 		const rect& getCropRect() const { return crop_; }
+		bool eliminate(const std::vector<std::string>& rotations);
+		std::string toString() const;
+		const std::string& getNameForRotation(int rot);
 	private:
 		int layer_;
 		std::string image_name_;
@@ -64,6 +67,8 @@ namespace hex
 		// mask/crop/blit
 		std::vector<TileImageVariant> variants_;
 		std::vector<std::string> variations_;
+		// Valid names stored against rotation. XXX might has well store file info as well.
+		std::map<int, std::vector<std::string>> image_files_;
 	};
 
 	class TileRule
@@ -80,6 +85,9 @@ namespace hex
 		std::string toString();
 		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
 		bool matchFlags(const HexObject* hex, TerrainRule* tr, const std::vector<std::string>& rs=std::vector<std::string>(), int rot=0);
+		void center(const point& from_center, const point& to_center);
+		bool eliminate(const std::vector<std::string>& rotations);
+		bool hasImage() const { return image_ != nullptr; }
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;
@@ -108,7 +116,10 @@ namespace hex
 		void preProcessMap(const variant& tiles);
 
 		static TerrainRulePtr create(const variant& v);
-		void applyImage(HexObject* hex);
+		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
+		bool tryEliminate();
+
+		std::string toString() const;
 	private:
 		// constrains the rule to given absolute map coordinates
 		std::unique_ptr<point> absolute_position_;
