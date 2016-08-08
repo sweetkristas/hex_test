@@ -212,7 +212,7 @@ namespace hex
 			ss << "x,y: " << *absolute_position_ << "; ";
 		}
 		if(mod_position_) {
-			ss << "mod_x/y: " << *mod_position_ < "; ";
+			ss << "mod_x/y: " << *mod_position_ << "; ";
 		}
 		if(!rotations_.empty()) {
 			ss << "rotations:";
@@ -681,7 +681,9 @@ namespace hex
 		for(int rot = 0; rot != 6; ++rot) {
 			std::string name = rot_replace(image_name_, rotations, rot);
 			if(pos_v == std::string::npos) {
-				image_files_[rot].emplace_back(name);
+				if(terrain_info_exists(name)) {
+					image_files_[rot].emplace_back(name);
+				}
 				continue;
 			}
 			for(const auto& var : variations_) {
