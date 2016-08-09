@@ -191,9 +191,9 @@ namespace hex
 			auto tr = TerrainRule::create(tg);
 			if(tr->tryEliminate()) {
 				::get_terrain_rules().emplace_back(tr);
-				LOG_INFO("Keep Rule: " << tr->toString());
+				//LOG_INFO("Keep Rule: " << tr->toString());
 			} else {
-				LOG_INFO("Removed Rule: " << tr->toString());
+				//LOG_INFO("Removed Rule: " << tr->toString());
 			}
 		}
 		LOG_INFO("Loaded " << get_terrain_rules().size() << " terrain rules into memory.");

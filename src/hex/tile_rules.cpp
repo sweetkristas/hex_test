@@ -312,6 +312,15 @@ namespace hex
 	// return false to remove this rule. true if it should be kept.
 	bool TerrainRule::tryEliminate()
 	{
+		// If rule has no images, we keep it since it may have flags.
+		bool has_image = false;
+		for(auto& td : tile_data_) {
+			has_image |= td->hasImage();
+		}
+		if(!has_image && image_.empty()) {
+			return true;
+		}
+
 		// Basically we should check these as part of initialisation and discard if the particular combination specified in the 
 		// image tag isn't valid.
 		bool ret = false;
@@ -328,7 +337,7 @@ namespace hex
 		return ret;
 	}
 
-	void TerrainRule::applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot)
+	void TerrainRule::applyImage(HexObject* hex, int rot)
 	{
 		for(const auto& img : image_) {
 			if(img) {
@@ -429,6 +438,7 @@ namespace hex
 		if(image_) {
 			return image_->eliminate(rotations);
 		}
+		//return true;
 		return false;
 	}
 
@@ -493,27 +503,6 @@ namespace hex
 		return ss.str();
 	}
 
-	std::string TileRule::getImage(const HexObject* obj, const std::vector<std::string>& rs, int rot, int* layer)
-	{
-		// this is still WIP
-		if(image_) {
-			if(layer) {
-				*layer = image_->getLayer();
-			}
-			return rot_replace(image_->getName(), rs, rot);
-		}
-
-		// XXX Disabled for the since this needs re-working.
-		auto& imgs = parent_.lock()->getImages();
-		//if(img) {
-		//	if(layer) {
-		//		*layer = img->getLayer();
-		//	}
-		//	return rot_replace(img->getName(), rs, rot);
-		//}
-		return std::string();
-	}
-
 	bool TileRule::matchFlags(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rs, int rot)
 	{
 		const auto& has_flag = has_flag_.empty() ? tr->getHasFlags() : has_flag_;
@@ -544,27 +533,34 @@ namespace hex
 		const std::string& hex_type_full = obj->getFullTypeString();
 		const std::string& hex_type = obj->getTypeString();
 		bool invert_match = false;
-		bool tile_match = false;
+		bool tile_match = true;
 		for(auto& type : type_) {
 			type = rot_replace(type, rs, rot);
 			if(type == "!") {
 				invert_match = !invert_match;
 				continue;
 			}
-			const bool matches = type == "*" || string_match(type, hex_type);
-			if(!matches && invert_match == true) {
-				continue;
-			}
-			if(matches && invert_match == false) {
-				if(!matchFlags(obj, tr, rs, rot)) {
+			const bool matches = type == "*" || string_match(type, hex_type_full);
+			if(!matches) {
+				if(invert_match == true) {
+					continue;
+				} else {
 					return false;
 				}
-				tile_match = true;
+			}
+			if(matches && invert_match == false) {
 				break;
+			} else {
+				return false;
 			}
 		}
 
 		if(tile_match) {
+			if(!matchFlags(obj, tr, rs, rot)) {
+				tile_match = false;
+				return false;
+			}
+
 			const auto& set_flag = set_flag_.empty() ? tr->getSetFlags() : set_flag_;
 			for(auto& f : set_flag) {
 				obj->addTempFlag(rot_replace(f, rs, rot));
@@ -574,11 +570,12 @@ namespace hex
 		return tile_match;
 	}
 
-	void TileRule::applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot)
+	void TileRule::applyImage(HexObject* hex, int rot)
 	{
 		if(image_) {
 			/// XXX process mask and blit
-			hex->addImage(rot_replace(image_->getName(), rs, rot), 
+			std::string fname = image_->getNameForRotation(rot);
+			hex->addImage(fname, 
 				image_->getLayer(), 
 				image_->getBase(), 
 				image_->getCenter(),
@@ -641,6 +638,11 @@ namespace hex
 		return it->second[rng::generate() % it->second.size()];
 	}
 
+	bool TileImage::isValidForRotation(int rot)
+	{
+		return image_files_.find(rot) != image_files_.end();
+	}
+
 	std::string TileImage::toString() const
 	{
 		std::stringstream ss;
@@ -677,7 +679,7 @@ namespace hex
 			}
 			return !image_files_.empty();
 		}
-		// XXX should we rotate all the combinations and test them?
+		// rotate all the combinations and test them
 		for(int rot = 0; rot != 6; ++rot) {
 			std::string name = rot_replace(image_name_, rotations, rot);
 			if(pos_v == std::string::npos) {
@@ -689,29 +691,12 @@ namespace hex
 			for(const auto& var : variations_) {
 				pos_v = name.find("@V");
 				std::string img_name = name.substr(0, pos_v) + var + name.substr(pos_v + 2);
-				//std::stringstream ss;
-				//ss << "Lookup: " << img_name << " ... ";
 				if(terrain_info_exists(img_name)) {
 					image_files_[rot].emplace_back(img_name);
-					//ss << " Success.";
 				} else {
-					//ss << " Failure.";
 				}
-				//LOG_INFO(ss.str());
 			}
 		}
-
-		//if(!image_files_.empty()) {
-		//	std::stringstream ss;
-		//	ss << "Valid Images:";
-		//	for(const auto& p : image_files_) {
-		//		ss << "\n\tRotation:" << p.first;
-		//		for(const auto& fname : p.second) {
-		//			ss << " " << fname;
-		//		}
-		//	}
-		//	LOG_INFO(ss.str());
-		//}
 
 		return !image_files_.empty();
 	}
@@ -755,7 +740,6 @@ namespace hex
 
 		for(auto& hex : hmap->getTilesMutable()) {
 			for(int rot = 0; rot != max_loop; ++rot) {
-
 				if(mod_position_) {
 					auto& pos = hex.getPosition();
 					if((pos.x % mod_position_->x) != 0 || (pos.y % mod_position_->y) != 0) {
@@ -766,6 +750,17 @@ namespace hex
 				std::vector<std::pair<HexObject*, TileRule*>> obj_to_set_flags;
 				// We expect tiles to have position data.
 				bool tile_match = true;
+
+				if(!image_.empty()) {
+					bool res = false;
+					for(const auto& img : image_) {
+						res |= img->isValidForRotation(rot);
+					}
+					if(!res) {
+						// XXX should we check for images in tile tags?
+						continue;
+					}
+				}
 
 				for(const auto& td : tile_data_) {
 					ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
@@ -797,21 +792,13 @@ namespace hex
 
 				if(tile_match) {
 					// XXX need to fix issues when other tiles have images that need to match a different hex
-					tile_data_.front()->applyImage(&hex, rotations_, rot);
-					applyImage(&hex, rotations_, rot);
-
-					//auto img = tile_data_.front()->getImage(&hex, rotations_, rot, &layer);
-					//if(!img.empty()) {
-					//	LOG_INFO("tile(" << hex.getFullTypeString() << ") at " << hex.getPosition() << ": " << img << ", layer=" << layer);
-					//	for(const auto& td : tile_data_) {
-					//		LOG_INFO(td->toString());
-					//	}
-					//}
+					//tile_data_.front()->applyImage(&hex, rotations_, rot);
+					applyImage(&hex, rot);
 				}
 
 				for(auto& obj : obj_to_set_flags) {
 					obj.first->setTempFlags();
-					//obj.second->applyImage(obj.first, rotations_, rot);
+					obj.second->applyImage(obj.first, rot);
 				}
 
 			}

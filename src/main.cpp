@@ -1,5 +1,7 @@
 #include <clocale>
 #include <locale>
+#include <iostream>
+#include <fstream>
 
 #include "asserts.hpp"
 #include "filesystem.hpp"
@@ -97,11 +99,35 @@ void read_system_fonts(sys::file_path_map* res)
 #endif
 }
 
+void log_output(void *userdata, int category, SDL_LogPriority priority, const char *message)
+{
+	static bool file_opened = false;
+	static std::string file_name = *static_cast<std::string*>(userdata);
+	std::ofstream file(file_name, std::ios_base::out | std::ios_base::app);
+	switch(priority) {
+		case SDL_LOG_PRIORITY_VERBOSE:	file << "VERBOSE: "; break;
+		case SDL_LOG_PRIORITY_DEBUG:	file << "DEBUG: "; break;
+		case SDL_LOG_PRIORITY_INFO:		file << "INFO: "; break;
+		case SDL_LOG_PRIORITY_WARN:		file << "WARN: "; break;
+		case SDL_LOG_PRIORITY_ERROR:	file << "ERROR: "; break;
+		case SDL_LOG_PRIORITY_CRITICAL:	file << "CRITICAL: "; break;
+		default: break;
+	}
+	file << message << "\n";
+}
+
 int main(int argc, char* argv[]) 
 {
+	std::string log_file_name;
 	std::vector<std::string> args;
 	for(int i = 1; i < argc; ++i) {
-		args.emplace_back(argv[i]);
+		if(argv[i] == std::string("--log-to")) {
+			++i;
+			ASSERT_LOG(i < argc, "No argument for --log-to");
+			log_file_name = argv[i];
+		} else {
+			args.emplace_back(argv[i]);
+		}
 	}
 	int width = 1024;
 	int height = 768;
@@ -109,6 +135,10 @@ int main(int argc, char* argv[])
 	SDL::SDL_ptr manager(new SDL::SDL());
 	//SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 	SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_DEBUG);
+
+	if(!log_file_name.empty()) {
+		SDL_LogSetOutputFunction(log_output, &log_file_name);
+	}
 
 	if(!test::run_tests()) {
 		// Just exit if some tests failed.

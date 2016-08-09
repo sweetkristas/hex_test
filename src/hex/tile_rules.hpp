@@ -56,6 +56,7 @@ namespace hex
 		bool eliminate(const std::vector<std::string>& rotations);
 		std::string toString() const;
 		const std::string& getNameForRotation(int rot);
+		bool isValidForRotation(int rot);
 	private:
 		int layer_;
 		std::string image_name_;
@@ -81,9 +82,8 @@ namespace hex
 		void addPosition(const point& p) { position_.emplace_back(p); }
 		int getMapPos() const { return pos_; }
 		bool match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rotations, int rot);
-		std::string getImage(const HexObject* obj, const std::vector<std::string>& rs, int rot, int* layer);
 		std::string toString();
-		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
+		void applyImage(HexObject* hex, int rot);
 		bool matchFlags(const HexObject* hex, TerrainRule* tr, const std::vector<std::string>& rs=std::vector<std::string>(), int rot=0);
 		void center(const point& from_center, const point& to_center);
 		bool eliminate(const std::vector<std::string>& rotations);
@@ -116,7 +116,7 @@ namespace hex
 		void preProcessMap(const variant& tiles);
 
 		static TerrainRulePtr create(const variant& v);
-		void applyImage(HexObject* hex, const std::vector<std::string>& rs, int rot);
+		void applyImage(HexObject* hex, int rot);
 		bool tryEliminate();
 
 		std::string toString() const;

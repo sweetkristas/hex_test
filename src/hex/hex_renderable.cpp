@@ -69,13 +69,13 @@ namespace hex
 
 	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& hex_pixel_pos)
 	{
-		point p = hex_pixel_pos + base;
+		point p = hex_pixel_pos; // + base;
 		if(center.x != 0 || center.y != 0) {
-			p = p + point(center.x/2 - w/2, center.y/2 - h);
+			//p -= center - base;
 		}
 		if(!borders.empty()) {
-			p.x -= borders[0];
-			p.y -= borders[1];
+			p.x += borders[0];
+			p.y += borders[1];
 		}
 		const float vx1 = static_cast<float>(p.x);
 		const float vy1 = static_cast<float>(p.y);
@@ -123,7 +123,8 @@ namespace hex
 
 		for(auto& layer : map_layers) {
 			layer.second.first->updateAttributes(&layer.second.second);
-			layer.second.first->setOrder(layer.first.first + layer.first.second);
+			layer.second.first->setOrder(layer.first.first + layer.first.second + 1000);
+			layer.second.first->setBlendMode(BlendModeConstants::BM_ONE, BlendModeConstants::BM_ONE_MINUS_SRC_ALPHA);
 			layers_.emplace_back(layer.second.first);
 			attachObject(layer.second.first);
 		}
