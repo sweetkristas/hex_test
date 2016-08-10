@@ -35,11 +35,12 @@ namespace hex
 {
 	struct ImageHolder 
 	{
-		ImageHolder(const std::string& n, int l, const point& b, const point& c, const rect& crp, float o)
+		ImageHolder(const std::string& n, int l, const point& b, const point& c, const point& offs, const rect& crp, float o)
 			: name(n), 
 			  layer(l),
 			  base(b),
 			  center(c),
+			  offset(offs),
 			  crop(crp),
 			  opacity(o)
 		{
@@ -48,6 +49,7 @@ namespace hex
 		int layer;
 		point base;
 		point center;
+		point offset;
 		rect crop;
 		float opacity;
 	};
@@ -76,7 +78,7 @@ namespace hex
 		void clearTempFlags() const { temp_flags_.clear(); }
 		void setTempFlags() const;
 		void clearImages();
-		void addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity);
+		void addImage(const std::string& name, int layer, const point& base, const point& center, const point& offset, const rect& crop, float opacity);
 		const std::vector<ImageHolder>& getImages() const { return images_; }
 	private:
 		const HexMap* parent_;

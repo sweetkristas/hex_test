@@ -67,11 +67,14 @@ namespace hex
 		}
 	}
 
-	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& hex_pixel_pos)
+	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
 	{
-		point p = hex_pixel_pos; // + base;
+		point p = hex_pixel_pos + offset; // + base;
 		if(center.x != 0 || center.y != 0) {
 			//p -= center - base;
+		}
+		if(base.y == 72) {
+			p.y -= 72;
 		}
 		if(!borders.empty()) {
 			p.x += borders[0];
@@ -115,6 +118,7 @@ namespace hex
 						borders, 
 						img.base, 
 						img.center, 
+						img.offset,
 						get_pixel_pos_from_tile_pos(hex.getPosition(), 
 						g_hex_tile_size));
 				}

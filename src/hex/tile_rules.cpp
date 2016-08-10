@@ -33,6 +33,8 @@
 
 namespace 
 {
+	const int HexTileSize = 72;	// XXX abstract this elsewhere.
+
 	std::string rot_replace(const std::string& str, const std::vector<std::string>& rotations, int rot)
 	{
 		//if(rot == 0) {
@@ -131,6 +133,22 @@ namespace
 		hex::oddq_to_cube_coords(p2, &x_p2, &y_p2, &z_p2);
 		return hex::cube_to_oddq_coords(x_p1 + x_p2, y_p1 + y_p2, z_p1 + z_p2);
 	}
+
+	point center_point(const point& from_center, const point& to_center, const point& p)
+	{
+		int x_p, y_p, z_p;
+	    int x_c, y_c, z_c;
+        hex::oddq_to_cube_coords(p, &x_p, &y_p, &z_p);
+        hex::oddq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
+
+        const int p_from_c_x = x_p - x_c;
+        const int p_from_c_y = y_p - y_c;
+        const int p_from_c_z = z_p - z_c;
+			
+		int x_r, y_r, z_r;
+		hex::oddq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
+		return hex::cube_to_oddq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
+	}
 }
 
 namespace hex
@@ -145,7 +163,8 @@ namespace hex
 		  map_(),
 		  center_(),
 		  tile_data_(),
-		  image_()
+		  image_(),
+		  pos_offset_()
 	{
 		if(v.has_key("x")) {
 			absolute_position_ = std::unique_ptr<point>(new point(v["x"].as_int32()));
@@ -261,6 +280,7 @@ namespace hex
 		std::string first_line = boost::trim_copy(map_.front());		
 		int y = first_line.front() == ',' ? 1 : 0;		
 		auto td = std::unique_ptr<TileRule>(new TileRule(shared_from_this()));
+		std::vector<point> coord_list;
 		for(const auto& map_line : map_) {
 			std::vector<std::string> strs;
 			std::string ml = boost::erase_all_copy(boost::erase_all_copy(map_line, "\t"), " ");
@@ -270,12 +290,17 @@ namespace hex
 			// '*' means this rule applies to this hex, but this hex can be any terrain type
 			// an empty string is an odd line.
 			int x = 0;
+			bool is_odd_line = ml.front() == ',';
 			for(auto& str : strs) {
-				if(str == "." || str.empty()) {
+				if(str == ".") {
+					coord_list.emplace_back(x, y);
+				} else if(str.empty()) {
 					// ignore
 				} else if(str == "*") {
 					td->addPosition(point(x,y));
+					coord_list.emplace_back(x, y);
 				} else {
+					coord_list.emplace_back(x, y);
 					try {
 						int pos = boost::lexical_cast<int>(str);
 						bool found = false;
@@ -295,8 +320,34 @@ namespace hex
 				}
 				++x;
 			}
-			++y;
+			if(is_odd_line) {
+				++y;
+			}
 		}
+		
+		if(!rotations_.empty()) {
+			pos_offset_.resize(rotations_.size());
+			for(auto& p : coord_list) {
+				LOG_INFO("coord: " << p);
+				p = center_point(center_, point(), p);
+				LOG_INFO("centerd coords: " << p);
+			}
+			for(int rot = 0; rot != rotations_.size(); ++rot) {
+				point min_coord(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+				for(const auto& p : coord_list) {
+					point rp = rotate_point(rot, point(), p);
+					if(rp.x < min_coord.x) {
+						min_coord.x = rp.x;
+					}
+					if(rp.y < min_coord.y) {
+						min_coord.y = rp.y;
+					}
+				}
+				LOG_INFO("rot: " << rot << "; min: " << min_coord);
+				pos_offset_[rot] = get_pixel_pos_from_tile_pos(min_coord, HexTileSize);
+			}
+		}
+
 		if(!td->getPosition().empty()) {
 			tile_data_.emplace_back(std::move(td));
 		}
@@ -307,6 +358,14 @@ namespace hex
 			}
 			center_ = point();
 		}
+	}
+
+	point TerrainRule::calcOffsetForRotation(int rot)
+	{
+		if(rotations_.empty()) {
+			return point();
+		}
+		return pos_offset_[rot];
 	}
 
 	// return false to remove this rule. true if it should be kept.
@@ -339,6 +398,7 @@ namespace hex
 
 	void TerrainRule::applyImage(HexObject* hex, int rot)
 	{
+		point offs = calcOffsetForRotation(rot);
 		for(const auto& img : image_) {
 			if(img) {
 				/// XXX process mask and blit
@@ -347,6 +407,7 @@ namespace hex
 					img->getLayer(), 
 					img->getBase(), 
 					img->getCenter(),
+					offs,
 					img->getCropRect(),
 					img->getOpacity());
 			}
@@ -368,7 +429,9 @@ namespace hex
 		  set_flag_(),
 		  no_flag_(),
 		  has_flag_(),
-		  image_(nullptr)
+		  image_(nullptr),
+		  pos_rotations_(),
+		  min_pos_()
 	{
 		if(v.has_key("x") || v.has_key("y")) {
 			position_.emplace_back(v["x"].as_int32(0), v["y"].as_int32(0));
@@ -410,7 +473,9 @@ namespace hex
 		  set_flag_(),
 		  no_flag_(),
 		  has_flag_(),
-		  image_(nullptr)
+		  image_(nullptr),
+		  pos_rotations_(),
+		  min_pos_()
 	{
 		type_.emplace_back("*");
 	}
@@ -579,6 +644,7 @@ namespace hex
 				image_->getLayer(), 
 				image_->getBase(), 
 				image_->getCenter(),
+				point(),
 				image_->getCropRect(),
 				image_->getOpacity());
 		}

@@ -88,6 +88,9 @@ namespace hex
 		void center(const point& from_center, const point& to_center);
 		bool eliminate(const std::vector<std::string>& rotations);
 		bool hasImage() const { return image_ != nullptr; }
+		void calculatePositionRotations();
+		const std::vector<point>& getPositionRotations(int rot) const { return pos_rotations_[rot]; }
+		const point& getMinPos() const { return min_pos_; }
 	private:
 		std::weak_ptr<TerrainRule> parent_;
 		std::vector<point> position_;
@@ -97,6 +100,8 @@ namespace hex
 		std::vector<std::string> no_flag_;
 		std::vector<std::string> has_flag_;
 		std::unique_ptr<TileImage> image_;
+		std::vector<std::vector<point>> pos_rotations_;
+		point min_pos_;
 	};
 
 	typedef std::unique_ptr<TileRule> TileRulePtr;
@@ -120,6 +125,7 @@ namespace hex
 		bool tryEliminate();
 
 		std::string toString() const;
+		point calcOffsetForRotation(int rot);
 	private:
 		// constrains the rule to given absolute map coordinates
 		std::unique_ptr<point> absolute_position_;
@@ -135,5 +141,6 @@ namespace hex
 
 		std::vector<TileRulePtr> tile_data_;
 		std::vector<std::unique_ptr<TileImage>> image_;
+		std::vector<point> pos_offset_;
 	};
 }

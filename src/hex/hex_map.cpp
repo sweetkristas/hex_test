@@ -179,9 +179,9 @@ namespace hex
 	}
 
 	// All these arguments should be already compiled at an earlier layer.
-	void HexObject::addImage(const std::string& name, int layer, const point& base, const point& center, const rect& crop, float opacity)
+	void HexObject::addImage(const std::string& name, int layer, const point& base, const point& center, const point& offset, const rect& crop, float opacity)
 	{
-		LOG_INFO("Hex" << pos_ << ": " << name << "; layer: " << layer << "; base: " << base << "; center: " << center);
-		images_.emplace_back(name, layer, base, center, crop, opacity);
+		LOG_INFO("Hex" << pos_ << ": " << name << "; layer: " << layer << "; base: " << base << "; center: " << center << "; offset: " << offset);
+		images_.emplace_back(name, layer, base, center, offset, crop, opacity);
 	}
 }
