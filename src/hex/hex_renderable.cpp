@@ -69,13 +69,8 @@ namespace hex
 
 	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
 	{
-		point p = hex_pixel_pos + offset; // + base;
-		if(center.x != 0 || center.y != 0) {
-			//p -= center - base;
-		}
-		if(base.y == 72) {
-			p.y -= 72;
-		}
+		point p = hex_pixel_pos + offset + center; // + base;
+
 		if(!borders.empty()) {
 			p.x += borders[0];
 			p.y += borders[1];
@@ -121,6 +116,7 @@ namespace hex
 						img.offset,
 						get_pixel_pos_from_tile_pos(hex.getPosition(), 
 						g_hex_tile_size));
+					layer.first->setColor(1.0f, 1.0f, 1.0f, img.opacity);
 				}
 			}
 		}

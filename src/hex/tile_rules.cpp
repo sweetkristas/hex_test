@@ -149,6 +149,13 @@ namespace
 		hex::oddq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
 		return hex::cube_to_oddq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
 	}
+
+	point pixel_distance(const point& from, const point& to, int hex_size)
+	{
+		auto f = hex::get_pixel_pos_from_tile_pos(from, hex_size);
+		auto t = hex::get_pixel_pos_from_tile_pos(to, hex_size);
+		return f - t;
+	}
 }
 
 namespace hex
@@ -325,17 +332,23 @@ namespace hex
 			}
 		}
 		
-		if(!rotations_.empty()) {
-			pos_offset_.resize(rotations_.size());
+		// XXX I really don't like this code.
+		if(/*!rotations_.empty() &&*/ !image_.empty()) {
+			const int max_loops = rotations_.empty() ? 1 : rotations_.size();
+			pos_offset_.resize(max_loops);
 			for(auto& p : coord_list) {
-				LOG_INFO("coord: " << p);
+				//LOG_INFO("coord: " << p);
 				p = center_point(center_, point(), p);
-				LOG_INFO("centerd coords: " << p);
+				//LOG_INFO("centerd coords: " << p);
 			}
-			for(int rot = 0; rot != rotations_.size(); ++rot) {
-				point min_coord(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+			for(int rot = 0; rot != max_loops; ++rot) {
+				point min_coord;
 				for(const auto& p : coord_list) {
-					point rp = rotate_point(rot, point(), p);
+					const point rotated = rotate_point(rot, point(), p);
+					const point rp = pixel_distance(rotated, point(), HexTileSize);
+					//LOG_INFO("rotated(" << rot << "): " << rotated);
+					//LOG_INFO("rotated(" << rot << "): " << rp);
+					
 					if(rp.x < min_coord.x) {
 						min_coord.x = rp.x;
 					}
@@ -343,8 +356,45 @@ namespace hex
 						min_coord.y = rp.y;
 					}
 				}
-				LOG_INFO("rot: " << rot << "; min: " << min_coord);
-				pos_offset_[rot] = get_pixel_pos_from_tile_pos(min_coord, HexTileSize);
+
+				bool touches_single_hex = false;
+				std::vector<point> touched;
+				for(const auto& p : coord_list) {
+					const point rp = rotate_point(rot, point(), p);
+					const point d = pixel_distance(rp, point(), HexTileSize);
+					if(d == min_coord) {
+						touches_single_hex = true;
+						break;
+					} else if(d.x == min_coord.x || d.y == min_coord.y) {
+						bool doadd = true;
+						for(auto& tch : touched) {
+							if(tch.x == rp.x) {
+								if(tch.y > rp.y) {
+									tch.y = rp.y;
+								}
+								doadd = false;
+							}
+						}
+						if(doadd) {
+							touched.emplace_back(rp);
+						}
+					} else {
+						//LOG_INFO("distance" << p << " to (0,0): " << pixel_distance(p, point(), HexTileSize) << "; min: " << min_coord);
+					}
+				}
+				if(!touches_single_hex) {
+					// insert a imaginary hex in the upper-left.
+					ASSERT_LOG(touched.size() == 2, "Number of hexes touched != 2(" << touched.size() << "): " << toString());
+					// find leftmost hex.
+					if(touched[0].x < touched[1].x) {
+						min_coord = pixel_distance(point(touched[0].x, touched[0].y-1), point(), HexTileSize);
+					} else {
+						min_coord = pixel_distance(point(touched[1].x, touched[1].y-1), point(), HexTileSize);
+					}
+				}
+
+				//LOG_INFO("rot: " << rot << "; min: " << min_coord << "; single: " << (touches_single_hex ? "true" : "false"));
+				pos_offset_[rot] = min_coord;
 			}
 		}
 
@@ -362,7 +412,7 @@ namespace hex
 
 	point TerrainRule::calcOffsetForRotation(int rot)
 	{
-		if(rotations_.empty()) {
+		if(image_.empty()) {
 			return point();
 		}
 		return pos_offset_[rot];
