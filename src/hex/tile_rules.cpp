@@ -901,6 +901,9 @@ namespace hex
 					}
 					if(!match_pos) {
 						tile_match = false;
+						for(auto& obj : obj_to_set_flags) {
+							obj.first->clearTempFlags();
+						}
 						obj_to_set_flags.clear();
 						break;
 					}
@@ -910,13 +913,11 @@ namespace hex
 					// XXX need to fix issues when other tiles have images that need to match a different hex
 					//tile_data_.front()->applyImage(&hex, rotations_, rot);
 					applyImage(&hex, rot);
+					for(auto& obj : obj_to_set_flags) {
+						obj.first->setTempFlags();
+						obj.second->applyImage(obj.first, rot);
+					}
 				}
-
-				for(auto& obj : obj_to_set_flags) {
-					obj.first->setTempFlags();
-					obj.second->applyImage(obj.first, rot);
-				}
-
 			}
 		}
 		return false;
