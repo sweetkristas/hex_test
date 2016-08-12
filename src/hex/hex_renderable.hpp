@@ -29,6 +29,7 @@
 
 #include "hex_fwd.hpp"
 #include "hex_renderable_fwd.hpp"
+#include "rect_renderable.hpp"
 
 namespace hex
 {
@@ -40,8 +41,10 @@ namespace hex
 		static MapNodePtr create(std::weak_ptr<KRE::SceneGraph> sg, const variant& node);
 	private:
 		void notifyNodeAttached(std::weak_ptr<SceneNode> parent) override;
-
+		
 		std::vector<MapLayerPtr> layers_;
+		std::shared_ptr<RectRenderable> rr_;
+
 		bool changed_;
 
 		MapNode() = delete;

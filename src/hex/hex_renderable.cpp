@@ -65,11 +65,15 @@ namespace hex
 		for(auto& layer : layers_) {
 			attachObject(layer);
 		}
+		attachObject(rr_);
 	}
 
 	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
 	{
 		point p = hex_pixel_pos + offset + center; // + base;
+		// in an even-q layout the 0,0 tile is now no longer has a top-left pixel position of 0,0
+		// so we move down half a tile to compensate.
+		p.y += g_hex_tile_size / 2;
 
 		if(!borders.empty()) {
 			p.x += borders[0];
@@ -94,6 +98,13 @@ namespace hex
 		layers_.clear();
 		clear();
 
+		rr_.reset(new RectRenderable);
+		const point p1 = get_pixel_pos_from_tile_pos_evenq(1, 1, g_hex_tile_size) + point(0, g_hex_tile_size / 2);
+		const point p2 = get_pixel_pos_from_tile_pos_evenq(width-1, height-1, g_hex_tile_size) + point(0, g_hex_tile_size / 2);
+		rr_->update(p1.x, p1.y, p2.x, p2.y, Color::colorWhite());
+		rr_->setOrder(999999);
+		attachObject(rr_);
+
 		std::map<std::pair<int,int>, std::pair<MapLayerPtr, std::vector<KRE::vertex_texcoord>>> map_layers;
 		for(auto& hex : tiles) {
 			auto images = hex.getImages();
@@ -114,7 +125,7 @@ namespace hex
 						img.base, 
 						img.center, 
 						img.offset,
-						get_pixel_pos_from_tile_pos(hex.getPosition(), 
+						get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), 
 						g_hex_tile_size));
 					layer.first->setColor(1.0f, 1.0f, 1.0f, img.opacity);
 				}

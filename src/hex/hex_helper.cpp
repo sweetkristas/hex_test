@@ -42,6 +42,22 @@ namespace hex
 		*y1 = -(*x1 + *z1);
 	}
 
+	std::tuple<int,int,int> evenq_to_cube_coords(const point& p)
+	{
+		int x1 = p.x;
+		int z1 = p.y - (p.x + (p.x & 1)) / 2;
+		int y1 = -(x1 + z1);
+		return std::make_tuple(x1,y1,z1);
+	}
+
+	void evenq_to_cube_coords(const point& p, int* x1, int* y1, int* z1)
+	{
+		ASSERT_LOG(x1 != nullptr && y1 != nullptr && z1 != nullptr, "Parameter to oddq_to_cube_coords() was null.");
+		*x1 = p.x;
+		*z1 = p.y - (p.x + (p.x & 1)) / 2;
+		*y1 = -(*x1 + *z1);
+	}
+
 	int distance(int x1, int y1, int z1, int x2, int y2, int z2)
 	{
 		return (abs(x1 - x2) + abs(y1 - y2) + abs(z1 - z2)) / 2;
@@ -86,6 +102,16 @@ namespace hex
 		return point(x1, z1 + (x1 - (x1 & 1)) / 2);
 	}
 
+	point cube_to_evenq_coords(const std::tuple<int,int,int>& xyz)
+	{
+		return point(std::get<0>(xyz), std::get<2>(xyz) + (std::get<0>(xyz) + (std::get<0>(xyz) & 1)) / 2);
+	}
+
+	point cube_to_evenq_coords(int x1, int y1, int z1)
+	{
+		return point(x1, z1 + (x1 + (x1 & 1)) / 2);
+	}
+
 	std::vector<point> line(const point& p1, const point& p2)
 	{
 		std::vector<point> res;
@@ -124,17 +150,31 @@ namespace hex
 		}
 	}
 
-	point get_pixel_pos_from_tile_pos(const point& p, int HexTileSize)
+	point get_pixel_pos_from_tile_pos_oddq(const point& p, int HexTileSize)
 	{
-		return get_pixel_pos_from_tile_pos(p.x, p.y, HexTileSize);
+		return get_pixel_pos_from_tile_pos_oddq(p.x, p.y, HexTileSize);
 	}
 
-	point get_pixel_pos_from_tile_pos(int x, int y, int HexTileSize)
+	point get_pixel_pos_from_tile_pos_oddq(int x, int y, int HexTileSize)
 	{
 		const int HexTileSizeHalf = HexTileSize/2;
 		const int HexTileSizeThreeQuarters = (HexTileSize*3)/4;
 		const int tx = x*HexTileSizeThreeQuarters;
 		const int ty = HexTileSize*y + (abs(x)%2)*HexTileSizeHalf;
+		return point(tx, ty);
+	}
+
+	point get_pixel_pos_from_tile_pos_evenq(const point& p, int HexTileSize)
+	{
+		return get_pixel_pos_from_tile_pos_evenq(p.x, p.y, HexTileSize);
+	}
+
+	point get_pixel_pos_from_tile_pos_evenq(int x, int y, int HexTileSize)
+	{
+		const int HexTileSizeHalf = HexTileSize/2;
+		const int HexTileSizeThreeQuarters = (HexTileSize*3)/4;
+		const int tx = x*HexTileSizeThreeQuarters;
+		const int ty = HexTileSize*y - (abs(x)%2)*HexTileSizeHalf;
 		return point(tx, ty);
 	}
 }

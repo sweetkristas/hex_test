@@ -70,8 +70,8 @@ namespace
 		int x_p, y_p, z_p;
 		int x_c, y_c, z_c;
 		if(n > 0) {
-			hex::oddq_to_cube_coords(p, &x_p, &y_p, &z_p);
-			hex::oddq_to_cube_coords(c, &x_c, &y_c, &z_c);
+			hex::evenq_to_cube_coords(p, &x_p, &y_p, &z_p);
+			hex::evenq_to_cube_coords(c, &x_c, &y_c, &z_c);
 
 			const int p_from_c_x = x_p - x_c;
 			const int p_from_c_y = y_p - y_c;
@@ -89,7 +89,7 @@ namespace
 			const int r_x = r_from_c_x + x_c;
 			const int r_y = r_from_c_y + y_c;
 			const int r_z = r_from_c_z + z_c;
-			res = hex::cube_to_oddq_coords(r_x, r_y, r_z);
+			res = hex::cube_to_evenq_coords(r_x, r_y, r_z);
 		}
 		return res;
 	}
@@ -129,32 +129,32 @@ namespace
 	{
 		int x_p1, y_p1, z_p1;
 		int x_p2, y_p2, z_p2;
-		hex::oddq_to_cube_coords(p1, &x_p1, &y_p1, &z_p1);
-		hex::oddq_to_cube_coords(p2, &x_p2, &y_p2, &z_p2);
-		return hex::cube_to_oddq_coords(x_p1 + x_p2, y_p1 + y_p2, z_p1 + z_p2);
+		hex::evenq_to_cube_coords(p1, &x_p1, &y_p1, &z_p1);
+		hex::evenq_to_cube_coords(p2, &x_p2, &y_p2, &z_p2);
+		return hex::cube_to_evenq_coords(x_p1 + x_p2, y_p1 + y_p2, z_p1 + z_p2);
 	}
 
 	point center_point(const point& from_center, const point& to_center, const point& p)
 	{
 		int x_p, y_p, z_p;
 	    int x_c, y_c, z_c;
-        hex::oddq_to_cube_coords(p, &x_p, &y_p, &z_p);
-        hex::oddq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
+        hex::evenq_to_cube_coords(p, &x_p, &y_p, &z_p);
+        hex::evenq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
 
         const int p_from_c_x = x_p - x_c;
         const int p_from_c_y = y_p - y_c;
         const int p_from_c_z = z_p - z_c;
 			
 		int x_r, y_r, z_r;
-		hex::oddq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
-		return hex::cube_to_oddq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
+		hex::evenq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
+		return hex::cube_to_evenq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
 	}
 
 	point pixel_distance(const point& from, const point& to, int hex_size)
 	{
-		auto f = hex::get_pixel_pos_from_tile_pos(from, hex_size);
-		auto t = hex::get_pixel_pos_from_tile_pos(to, hex_size);
-		return f - t;
+		auto f = hex::get_pixel_pos_from_tile_pos_evenq(from, hex_size);
+		auto t = hex::get_pixel_pos_from_tile_pos_evenq(to, hex_size);
+		return t - f;
 	}
 }
 
@@ -299,23 +299,25 @@ namespace hex
 			// an empty string is an odd line.
 			int colno = 0;
 			for(auto& str : strs) {
+				const int x = (lineno % 2) + colno * 2;
+				const int y = (lineno - 1) / 2;
 				if(str == ".") {
-					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
+					coord_list.emplace_back(x, y);
 				} else if(str.empty()) {
 					// ignore
 				} else if(str == "*") {
-					td->addPosition(point((lineno % 2) + colno * 2, lineno / 2));
-					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
+					td->addPosition(point(x, y));
+					coord_list.emplace_back(x, y);
 				} else {
-					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
+					coord_list.emplace_back(x, y);
 					try {
 						int pos = boost::lexical_cast<int>(str);
 						bool found = false;
 						for(auto& td : tile_data_) {
 							if(td->getMapPos() == pos) {
-								td->addPosition(point((lineno % 2) + colno * 2, lineno / 2));
+								td->addPosition(point(x, y));
 								if(pos == 1) {
-									center_ = point((lineno % 2) + colno * 2, lineno / 2);
+									center_ = point(x, y);
 								}
 								found = true;
 							}
@@ -338,7 +340,7 @@ namespace hex
 			pos_offset_.resize(max_loops);
 			if(odd_start) {
 				for(int rot = 0; rot != max_loops; ++rot) {
-					pos_offset_[rot] = pixel_distance(point(0, 0), center_, HexTileSize) + point(HexTileSize/4, HexTileSize);
+					pos_offset_[rot] = pixel_distance(point(0, 0), center_, HexTileSize);
 				}
 			} else {
 				for(int rot = 0; rot != max_loops; ++rot) {
@@ -353,7 +355,7 @@ namespace hex
 					}
 					if(rot % 2) {
 						// odd needs offsetting then 0,0 added
-						pos_offset_[rot] = pixel_distance(min_coord, point(0, 1), HexTileSize) - point(0, 72);
+						pos_offset_[rot] = pixel_distance(min_coord, point(0, 1), HexTileSize);// - point(0, 72);
 					} else {
 						// even just need to choose the minimum x/y tile. -- done above.
 						pos_offset_[rot] = pixel_distance(min_coord, center_, HexTileSize);
@@ -410,6 +412,9 @@ namespace hex
 			if(img) {
 				/// XXX process mask and blit
 				std::string fname = img->getNameForRotation(rot);
+				if(fname.empty()) {
+					return;
+				}
 				hex->addImage(fname, 
 					img->getLayer(), 
 					img->getBase(), 
@@ -492,16 +497,16 @@ namespace hex
 		for(auto& p : position_) {
 	        int x_p, y_p, z_p;
 	        int x_c, y_c, z_c;
-            hex::oddq_to_cube_coords(p, &x_p, &y_p, &z_p);
-            hex::oddq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
+            hex::evenq_to_cube_coords(p, &x_p, &y_p, &z_p);
+            hex::evenq_to_cube_coords(from_center, &x_c, &y_c, &z_c);
 
             const int p_from_c_x = x_p - x_c;
             const int p_from_c_y = y_p - y_c;
             const int p_from_c_z = z_p - z_c;
 			
 			int x_r, y_r, z_r;
-			hex::oddq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
-			p = hex::cube_to_oddq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
+			hex::evenq_to_cube_coords(to_center, &x_r, &y_r, &z_r);
+			p = hex::cube_to_evenq_coords(x_r + p_from_c_x, y_r + p_from_c_y, z_r + p_from_c_z);
 		}
 	}
 
@@ -602,6 +607,7 @@ namespace hex
 			}
 			return false;
 		}
+
 		const std::string& hex_type_full = obj->getFullTypeString();
 		const std::string& hex_type = obj->getTypeString();
 		bool invert_match = false;
@@ -612,7 +618,7 @@ namespace hex
 				invert_match = !invert_match;
 				continue;
 			}
-			const bool matches = type == "*" || string_match(type, hex_type_full);
+			const bool matches = type == "*" || string_match(type, hex_type_full) || string_match(type, hex_type);
 			if(!matches) {
 				if(invert_match == true) {
 					continue;
@@ -635,7 +641,9 @@ namespace hex
 
 			const auto& set_flag = set_flag_.empty() ? tr->getSetFlags() : set_flag_;
 			for(auto& f : set_flag) {
-				obj->addTempFlag(rot_replace(f, rs, rot));
+				if(obj != nullptr) {
+					obj->addTempFlag(rot_replace(f, rs, rot));
+				}
 			}
 		}
 
@@ -647,6 +655,9 @@ namespace hex
 		if(image_) {
 			/// XXX process mask and blit
 			std::string fname = image_->getNameForRotation(rot);
+			if(fname.empty()) {
+				return;
+			}
 			hex->addImage(fname, 
 				image_->getLayer(), 
 				image_->getBase(), 
@@ -706,6 +717,10 @@ namespace hex
 	const std::string& TileImage::getNameForRotation(int rot)
 	{
 		auto it = image_files_.find(rot);
+		if(it == image_files_.end()) {
+			static std::string res;
+			return res;
+		}
 		ASSERT_LOG(it != image_files_.end(), "No image for rotation: " << rot << " : " << toString());
 		ASSERT_LOG(!it->second.empty(), "No files for rotation: " << rot);
 		return it->second[rng::generate() % it->second.size()];
@@ -884,12 +899,12 @@ namespace hex
 UNIT_TEST(point_rotate)
 {
 	CHECK_EQ(rotate_point(0, point(2, 2), point(2, 1)), point(2, 1));
-	CHECK_EQ(rotate_point(1, point(2, 2), point(2, 1)), point(3, 1));
-	CHECK_EQ(rotate_point(2, point(2, 2), point(2, 1)), point(3, 2));
+	CHECK_EQ(rotate_point(1, point(2, 2), point(2, 1)), point(3, 2));
+	CHECK_EQ(rotate_point(2, point(2, 2), point(2, 1)), point(3, 3));
 	CHECK_EQ(rotate_point(3, point(2, 2), point(2, 1)), point(2, 3));
-	CHECK_EQ(rotate_point(4, point(2, 2), point(2, 1)), point(1, 2));
-	CHECK_EQ(rotate_point(5, point(2, 2), point(2, 1)), point(1, 1));
-	CHECK_EQ(rotate_point(1, point(3, 3), point(3, 2)), point(4, 3));
+	CHECK_EQ(rotate_point(4, point(2, 2), point(2, 1)), point(1, 3));
+	CHECK_EQ(rotate_point(5, point(2, 2), point(2, 1)), point(1, 2));
+	CHECK_EQ(rotate_point(1, point(3, 3), point(3, 2)), point(4, 2));
 }
 
 UNIT_TEST(string_match)
@@ -901,6 +916,7 @@ UNIT_TEST(string_match)
 	CHECK_EQ(string_match("Re", "Rd"), false);
 	CHECK_EQ(string_match("*^Bsb|", "Gg^Bsb|"), true);
 	CHECK_EQ(string_match("*^Bsb|", "Gg^Fp"), false);
+	//CHECK_EQ(string_match("Aa", "Aa^Fpa"), true);
 }
 
 UNIT_TEST(rot_replace)
@@ -911,3 +927,10 @@ UNIT_TEST(rot_replace)
 	CHECK_EQ(rot_replace("transition-@R0", std::vector<std::string>{"n", "ne", "se", "s", "sw", "nw"}, 1), "transition-ne");
 	CHECK_EQ(rot_replace("transition-@R0", std::vector<std::string>{"n", "ne", "se", "s", "sw", "nw"}, 5), "transition-nw");
 }
+
+UNIT_TEST(pixel_distance)
+{
+	CHECK_EQ(pixel_distance(point(0,0), point(0,1), 72), point(0, 72));
+	CHECK_EQ(pixel_distance(point(0,0), point(1,0), 72), point(54, -36));
+}
+
