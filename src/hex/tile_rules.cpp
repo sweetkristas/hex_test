@@ -284,8 +284,9 @@ namespace hex
 		if(map_.empty()) {
 			return;
 		}
-		std::string first_line = boost::trim_copy(map_.front());		
-		int y = first_line.front() == ',' ? 1 : 0;		
+		std::string first_line = boost::trim_copy(map_.front());
+		const bool odd_start = first_line.front() == ',';
+		int lineno = odd_start ? 1 : 0;
 		auto td = std::unique_ptr<TileRule>(new TileRule(shared_from_this()));
 		std::vector<point> coord_list;
 		for(const auto& map_line : map_) {
@@ -296,26 +297,25 @@ namespace hex
 			// '.' means this rule does not apply to this hex
 			// '*' means this rule applies to this hex, but this hex can be any terrain type
 			// an empty string is an odd line.
-			int x = 0;
-			bool is_odd_line = ml.front() == ',';
+			int colno = 0;
 			for(auto& str : strs) {
 				if(str == ".") {
-					coord_list.emplace_back(x, y);
+					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
 				} else if(str.empty()) {
 					// ignore
 				} else if(str == "*") {
-					td->addPosition(point(x,y));
-					coord_list.emplace_back(x, y);
+					td->addPosition(point((lineno % 2) + colno * 2, lineno / 2));
+					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
 				} else {
-					coord_list.emplace_back(x, y);
+					coord_list.emplace_back((lineno % 2) + colno * 2, lineno / 2);
 					try {
 						int pos = boost::lexical_cast<int>(str);
 						bool found = false;
 						for(auto& td : tile_data_) {
 							if(td->getMapPos() == pos) {
-								td->addPosition(point(x,y));
+								td->addPosition(point((lineno % 2) + colno * 2, lineno / 2));
 								if(pos == 1) {
-									center_ = point(x,y);
+									center_ = point((lineno % 2) + colno * 2, lineno / 2);
 								}
 								found = true;
 							}
@@ -325,88 +325,45 @@ namespace hex
 						ASSERT_LOG(false, "Unable to convert to number" << str);
 					}
 				}
-				++x;
+				if(!((lineno % 2) != 0 && strs.front().empty())) {
+					++colno;
+				}
 			}
-			if(is_odd_line) {
-				++y;
-			}
+			++lineno;
 		}
-		
-		// XXX I really don't like this code.
-		if(/*!rotations_.empty() &&*/ !image_.empty()) {
+
+		// Code to calculate the offset needed when an image is specified in the base terrain_graphics element.
+		if(!image_.empty()) {
 			const int max_loops = rotations_.empty() ? 1 : rotations_.size();
 			pos_offset_.resize(max_loops);
-			for(auto& p : coord_list) {
-				//LOG_INFO("coord: " << p);
-				p = center_point(center_, point(), p);
-				//LOG_INFO("centerd coords: " << p);
-			}
-			for(int rot = 0; rot != max_loops; ++rot) {
-				point min_coord;
-				for(const auto& p : coord_list) {
-					const point rotated = rotate_point(rot, point(), p);
-					const point rp = pixel_distance(rotated, point(), HexTileSize);
-					//LOG_INFO("rotated(" << rot << "): " << rotated);
-					//LOG_INFO("rotated(" << rot << "): " << rp);
-					
-					if(rp.x < min_coord.x) {
-						min_coord.x = rp.x;
-					}
-					if(rp.y < min_coord.y) {
-						min_coord.y = rp.y;
-					}
+			if(odd_start) {
+				for(int rot = 0; rot != max_loops; ++rot) {
+					pos_offset_[rot] = pixel_distance(point(0, 0), center_, HexTileSize) + point(HexTileSize/4, HexTileSize);
 				}
-
-				bool touches_single_hex = false;
-				std::vector<point> touched;
-				for(const auto& p : coord_list) {
-					const point rp = rotate_point(rot, point(), p);
-					const point d = pixel_distance(rp, point(), HexTileSize);
-					if(d == min_coord) {
-						touches_single_hex = true;
-						break;
-					} else if(d.x == min_coord.x || d.y == min_coord.y) {
-						bool doadd = true;
-						for(auto& tch : touched) {
-							if(tch.x == rp.x) {
-								if(tch.y > rp.y) {
-									tch.y = rp.y;
-								}
-								doadd = false;
+			} else {
+				for(int rot = 0; rot != max_loops; ++rot) {
+					point min_coord(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+					for(const auto& p : coord_list) {
+						const point rotated_p = rotate_point(rot, center_, p);
+						if(rotated_p.x <= min_coord.x) {
+							if(!(rotated_p.x == min_coord.x && rotated_p.y > min_coord.y)) {
+								min_coord = rotated_p;
 							}
 						}
-						if(doadd) {
-							touched.emplace_back(rp);
-						}
+					}
+					if(rot % 2) {
+						// odd needs offsetting then 0,0 added
+						pos_offset_[rot] = pixel_distance(min_coord, point(0, 1), HexTileSize) - point(0, 72);
 					} else {
-						//LOG_INFO("distance" << p << " to (0,0): " << pixel_distance(p, point(), HexTileSize) << "; min: " << min_coord);
+						// even just need to choose the minimum x/y tile. -- done above.
+						pos_offset_[rot] = pixel_distance(min_coord, center_, HexTileSize);
 					}
 				}
-				if(!touches_single_hex) {
-					// insert a imaginary hex in the upper-left.
-					ASSERT_LOG(touched.size() == 2, "Number of hexes touched != 2(" << touched.size() << "): " << toString());
-					// find leftmost hex.
-					if(touched[0].x < touched[1].x) {
-						min_coord = pixel_distance(point(touched[0].x, touched[0].y-1), point(), HexTileSize);
-					} else {
-						min_coord = pixel_distance(point(touched[1].x, touched[1].y-1), point(), HexTileSize);
-					}
-				}
-
-				//LOG_INFO("rot: " << rot << "; min: " << min_coord << "; single: " << (touches_single_hex ? "true" : "false"));
-				pos_offset_[rot] = min_coord;
 			}
 		}
 
 		if(!td->getPosition().empty()) {
 			tile_data_.emplace_back(std::move(td));
-		}
-
-		if(!map_.empty()) {
-			for(auto& td : tile_data_) {
-				td->center(center_, point());
-			}
-			center_ = point();
 		}
 	}
 
