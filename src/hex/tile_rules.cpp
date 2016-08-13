@@ -340,7 +340,8 @@ namespace hex
 			pos_offset_.resize(max_loops);
 			if(odd_start) {
 				for(int rot = 0; rot != max_loops; ++rot) {
-					pos_offset_[rot] = pixel_distance(point(0, 0), center_, HexTileSize);
+					//pos_offset_[rot] = pixel_distance(center_, point(0, -1), HexTileSize) + point(18, 0);
+					pos_offset_[rot] = point(0, -HexTileSize);
 				}
 			} else {
 				for(int rot = 0; rot != max_loops; ++rot) {
@@ -355,14 +356,19 @@ namespace hex
 					}
 					if(rot % 2) {
 						// odd needs offsetting then 0,0 added
-						pos_offset_[rot] = pixel_distance(min_coord, point(0, 1), HexTileSize);// - point(0, 72);
+						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);// - point(0, 72);
 					} else {
 						// even just need to choose the minimum x/y tile. -- done above.
-						pos_offset_[rot] = pixel_distance(min_coord, center_, HexTileSize);
+						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize);
 					}
 				}
 			}
 		}
+
+		/*for(auto& td : tile_data_) {
+			td->center(center_, point(0, 0));
+		}
+		center_ = point(0, 0);*/
 
 		if(!td->getPosition().empty()) {
 			tile_data_.emplace_back(std::move(td));
@@ -600,11 +606,11 @@ namespace hex
 	bool TileRule::match(const HexObject* obj, TerrainRule* tr, const std::vector<std::string>& rs, int rot)
 	{
 		if(obj == nullptr) {
-			for(auto& type : type_) {
+			/*for(auto& type : type_) {
 				if(type == "*") {
 					return true;
 				}
-			}
+			}*/
 			return false;
 		}
 

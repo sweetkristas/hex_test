@@ -112,6 +112,7 @@
     <ClInclude Include="..\src\lexical_cast.hpp" />
     <ClInclude Include="..\src\profile_timer.hpp" />
     <ClInclude Include="..\src\random.hpp" />
+    <ClInclude Include="..\src\rect_renderable.hpp" />
     <ClInclude Include="..\src\unit_test.hpp" />
     <ClInclude Include="..\src\uri.hpp" />
     <ClInclude Include="..\src\utf8_to_codepoint.hpp" />
@@ -195,6 +196,7 @@
     <ClCompile Include="..\src\kre\WindowManager.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\random.cpp" />
+    <ClCompile Include="..\src\rect_renderable.cpp" />
     <ClCompile Include="..\src\unit_test.cpp" />
     <ClCompile Include="..\src\variant.cpp" />
     <ClCompile Include="..\src\variant_utils.cpp" />

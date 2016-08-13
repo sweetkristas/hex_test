@@ -71,6 +71,14 @@ namespace hex
 	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
 	{
 		point p = hex_pixel_pos + offset + center; // + base;
+		if(center.x != 0 || center.y != 0) {
+			p.x -= w / 2;
+			p.y -= h / 2;
+			if(!borders.empty()) {
+				p.x -= (borders[0] + borders[2]) / 2;
+				p.y -= (borders[1] + borders[3]) / 2;
+			}
+		}
 		// in an even-q layout the 0,0 tile is now no longer has a top-left pixel position of 0,0
 		// so we move down half a tile to compensate.
 		p.y += g_hex_tile_size / 2;
@@ -100,7 +108,7 @@ namespace hex
 
 		rr_.reset(new RectRenderable);
 		const point p1 = get_pixel_pos_from_tile_pos_evenq(1, 1, g_hex_tile_size) + point(0, g_hex_tile_size / 2);
-		const point p2 = get_pixel_pos_from_tile_pos_evenq(width-1, height-1, g_hex_tile_size) + point(0, g_hex_tile_size / 2);
+		const point p2 = get_pixel_pos_from_tile_pos_evenq(width-2, height-2, g_hex_tile_size) + point(0, g_hex_tile_size / 2);
 		rr_->update(p1.x, p1.y, p2.x, p2.y, Color::colorWhite());
 		rr_->setOrder(999999);
 		attachObject(rr_);
