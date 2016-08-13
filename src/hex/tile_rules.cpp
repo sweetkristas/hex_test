@@ -286,7 +286,7 @@ namespace hex
 		}
 		std::string first_line = boost::trim_copy(map_.front());
 		const bool odd_start = first_line.front() == ',';
-		int lineno = odd_start ? 1 : 0;
+		int lineno = odd_start ? 0 : 1;
 		auto td = std::unique_ptr<TileRule>(new TileRule(shared_from_this()));
 		std::vector<point> coord_list;
 		for(const auto& map_line : map_) {
@@ -299,8 +299,8 @@ namespace hex
 			// an empty string is an odd line.
 			int colno = 0;
 			for(auto& str : strs) {
-				const int x = (lineno % 2) + colno * 2;
-				const int y = (lineno - 1) / 2;
+				const int x = colno * 2 - ((lineno + 1) % 2);
+				const int y = lineno / 2;
 				if(str == ".") {
 					coord_list.emplace_back(x, y);
 				} else if(str.empty()) {
@@ -356,10 +356,10 @@ namespace hex
 					}
 					if(rot % 2) {
 						// odd needs offsetting then 0,0 added
-						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);// - point(0, 72);
+						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);
 					} else {
 						// even just need to choose the minimum x/y tile. -- done above.
-						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize);
+						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize) + point(0,72);
 					}
 				}
 			}
