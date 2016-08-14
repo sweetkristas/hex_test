@@ -134,6 +134,15 @@ namespace
 		return hex::cube_to_evenq_coords(x_p1 + x_p2, y_p1 + y_p2, z_p1 + z_p2);
 	}
 
+	point sub_hex_coord(const point& p1, const point& p2)
+	{
+		int x_p1, y_p1, z_p1;
+		int x_p2, y_p2, z_p2;
+		hex::evenq_to_cube_coords(p1, &x_p1, &y_p1, &z_p1);
+		hex::evenq_to_cube_coords(p2, &x_p2, &y_p2, &z_p2);
+		return hex::cube_to_evenq_coords(x_p1 - x_p2, y_p1 - y_p2, z_p1 - z_p2);
+	}
+
 	point center_point(const point& from_center, const point& to_center, const point& p)
 	{
 		int x_p, y_p, z_p;
@@ -356,10 +365,10 @@ namespace hex
 					}
 					if(rot % 2) {
 						// odd needs offsetting then 0,0 added
-						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);
+						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);// - point(0, 72);;
 					} else {
 						// even just need to choose the minimum x/y tile. -- done above.
-						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize) + point(0,72);
+						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize) + point(0, 72);
 					}
 				}
 			}
@@ -627,21 +636,22 @@ namespace hex
 			const bool matches = type == "*" || string_match(type, hex_type_full) || string_match(type, hex_type);
 			if(!matches) {
 				if(invert_match == true) {
-					continue;
+					tile_match = true;
 				} else {
-					return false;
+					tile_match = false;
 				}
-			}
-			if(matches && invert_match == false) {
-				break;
 			} else {
-				return false;
+				if(invert_match == false) {
+					tile_match = true;
+					break;
+				} else {
+					tile_match = false;
+				}
 			}
 		}
 
 		if(tile_match) {
 			if(!matchFlags(obj, tr, rs, rot)) {
-				tile_match = false;
 				return false;
 			}
 
@@ -863,6 +873,7 @@ namespace hex
 					bool match_pos = false;
 
 					for(const auto& p : pos_data) {
+						//point rot_p = sub_hex_coord(add_hex_coord(hex.getPosition(), rotate_point(rot, center_, p)), center_);
 						point rot_p = rotate_point(rot, add_hex_coord(center_, hex.getPosition()), add_hex_coord(p, hex.getPosition()));
 						auto new_obj = const_cast<HexObject*>(hmap->getTileAt(rot_p));
 						if(td->match(new_obj, this, rotations_, rot)) {
