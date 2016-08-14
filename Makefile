@@ -49,6 +49,12 @@ endif
 
 USE_LUA?=$(shell pkg-config --exists lua5.2 && echo yes)
 
+PROFILE?=no
+ifeq ($(PROFILE),yes)
+BASE_CXXFLAGS += -pg -fprofile-arcs
+LDFLAGS += -lgcov
+endif
+
 # Initial compiler options, used before CXXFLAGS and CPPFLAGS.
 BASE_CXXFLAGS += -std=c++11 -ggdb3 -rdynamic -fno-inline-functions \
 	-fthreadsafe-statics -Wnon-virtual-dtor -Werror \
