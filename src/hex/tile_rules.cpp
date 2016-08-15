@@ -180,7 +180,8 @@ namespace hex
 		  center_(),
 		  tile_data_(),
 		  image_(),
-		  pos_offset_()
+		  pos_offset_(),
+		  probability_(v["probability"].as_int32(100))
 	{
 		if(v.has_key("x")) {
 			absolute_position_ = std::unique_ptr<point>(new point(v["x"].as_int32()));
@@ -353,22 +354,26 @@ namespace hex
 					pos_offset_[rot] = point(0, -HexTileSize);
 				}
 			} else {
-				for(int rot = 0; rot != max_loops; ++rot) {
-					point min_coord(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
-					for(const auto& p : coord_list) {
-						const point rotated_p = rotate_point(rot, center_, p);
-						if(rotated_p.x <= min_coord.x) {
-							if(!(rotated_p.x == min_coord.x && rotated_p.y > min_coord.y)) {
-								min_coord = rotated_p;
+				if(rotations_.empty()) {
+					pos_offset_[0] = point();
+				} else {
+					for(int rot = 0; rot != max_loops; ++rot) {
+						point min_coord(std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+						for(const auto& p : coord_list) {
+							const point rotated_p = rotate_point(rot, center_, p);
+							if(rotated_p.x <= min_coord.x) {
+								if(!(rotated_p.x == min_coord.x && rotated_p.y > min_coord.y)) {
+									min_coord = rotated_p;
+								}
 							}
 						}
-					}
-					if(rot % 2) {
-						// odd needs offsetting then 0,0 added
-						pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);// - point(0, 72);;
-					} else {
-						// even just need to choose the minimum x/y tile. -- done above.
-						pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize) + point(0, 72);
+						if(rot % 2) {
+							// odd needs offsetting then 0,0 added
+							pos_offset_[rot] = pixel_distance(point(0, 1), min_coord, HexTileSize);// - point(0, 72);;
+						} else {
+							// even just need to choose the minimum x/y tile. -- done above.
+							pos_offset_[rot] = pixel_distance(center_, min_coord, HexTileSize) + point(0, 72);
+						}
 					}
 				}
 			}
@@ -685,7 +690,7 @@ namespace hex
 	}
 
 	TileImage::TileImage(const variant& v)
-		: layer_(v["layer"].as_int32(-1000)),
+		: layer_(v["layer"].as_int32(0)),
 		  image_name_(v["name"].as_string_default("")),
 		  random_start_(v["random_start"].as_bool(true)),
 		  base_(),
@@ -866,39 +871,50 @@ namespace hex
 					}
 				}
 
-				for(const auto& td : tile_data_) {
+				bool match_pos = true;
+				auto td_it = tile_data_.cbegin();
+				for(; td_it != tile_data_.cend() && match_pos; ++td_it) {
+					const auto& td = *td_it;
 					ASSERT_LOG(td->hasPosition(), "tile data doesn't have an x,y position.");
 					const auto& pos_data = td->getPosition();
-
-					bool match_pos = false;
 
 					for(const auto& p : pos_data) {
 						//point rot_p = sub_hex_coord(add_hex_coord(hex.getPosition(), rotate_point(rot, center_, p)), center_);
 						point rot_p = rotate_point(rot, add_hex_coord(center_, hex.getPosition()), add_hex_coord(p, hex.getPosition()));
 						auto new_obj = const_cast<HexObject*>(hmap->getTileAt(rot_p));
 						if(td->match(new_obj, this, rotations_, rot)) {
-							match_pos = true;
+							//match_pos = true;
 							if(new_obj) {
 								obj_to_set_flags.emplace_back(std::make_pair(new_obj, td.get()));
 							}
-							break;
 						} else {
+							match_pos = false;
 							if(new_obj) {
 								new_obj->clearTempFlags();
 							}
+							break;
 						}
 					}
-					if(!match_pos) {
-						tile_match = false;
-						for(auto& obj : obj_to_set_flags) {
-							obj.first->clearTempFlags();
-						}
-						obj_to_set_flags.clear();
-						break;
+				}
+				if(!match_pos) {
+					tile_match = false;
+					for(auto& obj : obj_to_set_flags) {
+						obj.first->clearTempFlags();
 					}
+					obj_to_set_flags.clear();
 				}
 
 				if(tile_match) {
+					if(probability_ != 100) {
+						auto rand_no = rng::generate() % 100;
+						if(rand_no > probability_) {
+							for(auto& obj : obj_to_set_flags) {
+								obj.first->clearTempFlags();
+							}
+							obj_to_set_flags.clear();
+							continue;
+						}
+					}
 					// XXX need to fix issues when other tiles have images that need to match a different hex
 					//tile_data_.front()->applyImage(&hex, rotations_, rot);
 					applyImage(&hex, rot);

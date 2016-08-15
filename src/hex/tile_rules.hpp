@@ -142,5 +142,6 @@ namespace hex
 		std::vector<TileRulePtr> tile_data_;
 		std::vector<std::unique_ptr<TileImage>> image_;
 		std::vector<point> pos_offset_;
+		int probability_;
 	};
 }
