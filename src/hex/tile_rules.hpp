@@ -70,6 +70,9 @@ namespace hex
 		std::vector<std::string> variations_;
 		// Valid names stored against rotation. XXX might has well store file info as well.
 		std::map<int, std::vector<std::string>> image_files_;
+		std::vector<int> animation_frames_;
+		int animation_timing_;
+		bool is_animated_;
 	};
 
 	class TileRule

@@ -699,7 +699,10 @@ namespace hex
 		  crop_(),
 		  variants_(),
 		  variations_(),
-		  image_files_()
+		  image_files_(),
+		  animation_frames_(),
+		  animation_timing_(v["animation_timing"].as_int32(0)),
+		  is_animated_(false)
 	{
 		if(v.has_key("O")) {
 			opacity_ = v["O"]["param"].as_float();
@@ -717,6 +720,10 @@ namespace hex
 			for(const auto& ivar : v["variant"].as_list()) {
 				variants_.emplace_back(ivar);
 			}
+		}
+		if(v.has_key("animation-frames")) {
+			animation_frames_ = v["animation-frames"].as_list_int();
+			is_animated_ = true;
 		}
 		if(v.has_key("variations")) {
 			auto vars = v["variations"].as_list_string();
@@ -772,6 +779,7 @@ namespace hex
 		// no valid terrain images available.
 		auto pos_v = image_name_.find("@V");
 		auto pos_r = image_name_.find("@R");
+		auto pos_a = image_name_.find("@A");
 		if(pos_r == std::string::npos) {
 			if(!variations_.empty()) {
 				for(const auto& var : variations_) {
