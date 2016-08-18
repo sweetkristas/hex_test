@@ -68,10 +68,9 @@ namespace hex
 	public:
 		AnimatedMapLayer();
 		void preRender(const KRE::WindowPtr& wnd) override;
-		void setAnimationSeq(const std::vector<std::string>& frames);
+		void addAnimationSeq(const std::vector<std::string>& frames, const point& hex_pos);
 		void setAnimationTiming(int frame_time) { timing_ = frame_time; }
 		void setCrop(const rect& r) { crop_rect_ = r; }
-		void addHexPosition(const point& p) { hex_positions_.emplace_back(p); }
 		void setBCO(const point& b, const point& c, const point& o) { base_ = b; center_ = c; offset_ = o; }
 	private:
 		struct AnimFrame
@@ -80,10 +79,9 @@ namespace hex
 			rect area;
 			std::vector<int> borders;
 		};
-		std::vector<AnimFrame> frames_;
+		std::map<point, std::vector<AnimFrame>> frames_;
 		rect crop_rect_;
 		int timing_;
-		std::vector<point> hex_positions_;
 		int current_frame_pos_;
 		point base_;
 		point center_;

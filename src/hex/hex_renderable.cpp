@@ -215,11 +215,10 @@ namespace hex
 						aml = std::make_shared<AnimatedMapLayer>();
 					}
 					aml->setTexture(tex);
-					aml->setAnimationSeq(img.animation_frames);
+					aml->addAnimationSeq(img.animation_frames, get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), g_hex_tile_size));
 					aml->setAnimationTiming(img.animation_timing);
 					aml->setCrop(img.crop);
 					aml->setColor(1.0f, 1.0f, 1.0f, img.opacity);
-					aml->addHexPosition(get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), g_hex_tile_size));
 					aml->setBCO(img.base, img.center, img.offset);
 					
 					layer.first = aml;
@@ -283,7 +282,6 @@ namespace hex
 		: frames_(),
 		  crop_rect_(),
 		  timing_(100),
-		  hex_positions_(),
 		  current_frame_pos_(0)
 	{
 	}
@@ -306,8 +304,10 @@ namespace hex
 		if(update_anim) {
 			std::vector<KRE::vertex_texcoord> vtx;
 			auto tex = getTexture();
-			for(const auto& pos : hex_positions_) {
-				rect area = frames_[current_frame_pos_].area;
+			for(const auto& f : frames_) {
+				const auto& pos = f.first;
+				const auto& frame = f.second;
+				rect area = frame[current_frame_pos_ % frame.size()].area;
 				if(!crop_rect_.empty()) {
 					area = rect(area.x1() + crop_rect_.x1(), area.y1() + crop_rect_.y1(), crop_rect_.w(), crop_rect_.h());
 				}
@@ -315,7 +315,7 @@ namespace hex
 					tex->getTextureCoords(0, area),
 					area.w(),
 					area.h(),
-					frames_[current_frame_pos_].borders, 
+					frame[current_frame_pos_ % frame.size()].borders, 
 					base_, 
 					center_, 
 					offset_,
@@ -333,19 +333,20 @@ namespace hex
 			clearAttributes();
 			updateAttributes(&vtx);
 
-			if(++current_frame_pos_ >= static_cast<int>(frames_.size())) {
-				current_frame_pos_ = 0;
-			}
+			++current_frame_pos_;
 		}
 	}
 
-	void AnimatedMapLayer::setAnimationSeq(const std::vector<std::string>& frames)
+	void AnimatedMapLayer::addAnimationSeq(const std::vector<std::string>& frames, const point& hex_pos)
 	{
+		std::vector<AnimFrame> new_frames;
+		new_frames.reserve(frames.size());
 		for(const auto& frame : frames) {
 			rect area;
 			std::vector<int> borders;
 			auto tex = get_terrain_texture(frame, &area, &borders);
-			frames_.emplace_back(area, borders);
+			new_frames.emplace_back(area, borders);
 		}
+		frames_.emplace(hex_pos, new_frames);
 	}
 }
