@@ -41,6 +41,10 @@ namespace hex
 		std::string name_;
 		bool random_start_;
 		std::vector<std::string> has_flag_;
+		rect crop_;
+		std::vector<int> animation_frames_;
+		int animation_timing_;
+		int layer_;
 	};
 
 	class TileImage
@@ -57,6 +61,7 @@ namespace hex
 		std::string toString() const;
 		const std::string& getNameForRotation(int rot);
 		bool isValidForRotation(int rot);
+		ImageHolder genHolder(int rot, const point& offs);
 	private:
 		int layer_;
 		std::string image_name_;
@@ -91,7 +96,6 @@ namespace hex
 		void center(const point& from_center, const point& to_center);
 		bool eliminate(const std::vector<std::string>& rotations);
 		bool hasImage() const { return image_ != nullptr; }
-		void calculatePositionRotations();
 		const std::vector<point>& getPositionRotations(int rot) const { return pos_rotations_[rot]; }
 		const point& getMinPos() const { return min_pos_; }
 	private:

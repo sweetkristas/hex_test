@@ -21,6 +21,7 @@
 	   distribution.
 */
 
+#include <iomanip>
 #include <boost/algorithm/string.hpp>
 
 #include "hex_helper.hpp"
@@ -430,18 +431,7 @@ namespace hex
 		point offs = calcOffsetForRotation(rot);
 		for(const auto& img : image_) {
 			if(img) {
-				/// XXX process mask and blit
-				std::string fname = img->getNameForRotation(rot);
-				if(fname.empty()) {
-					return;
-				}
-				hex->addImage(fname, 
-					img->getLayer(), 
-					img->getBase(), 
-					img->getCenter(),
-					offs,
-					img->getCropRect(),
-					img->getOpacity());
+				hex->addImage(img->genHolder(rot, offs));
 			}
 		}
 	}
@@ -674,18 +664,7 @@ namespace hex
 	void TileRule::applyImage(HexObject* hex, int rot)
 	{
 		if(image_) {
-			/// XXX process mask and blit
-			std::string fname = image_->getNameForRotation(rot);
-			if(fname.empty()) {
-				return;
-			}
-			hex->addImage(fname, 
-				image_->getLayer(), 
-				image_->getBase(), 
-				image_->getCenter(),
-				point(),
-				image_->getCropRect(),
-				image_->getOpacity());
+			hex->addImage(image_->genHolder(rot, point()));
 		}
 	}
 
@@ -721,8 +700,8 @@ namespace hex
 				variants_.emplace_back(ivar);
 			}
 		}
-		if(v.has_key("animation-frames")) {
-			animation_frames_ = v["animation-frames"].as_list_int();
+		if(v.has_key("animation_frames")) {
+			animation_frames_ = v["animation_frames"].as_list_int();
 			is_animated_ = true;
 		}
 		if(v.has_key("variations")) {
@@ -772,6 +751,24 @@ namespace hex
 		return ss.str();
 	}
 
+	ImageHolder TileImage::genHolder(int rot, const point& offs)
+	{
+		ImageHolder res;
+		res.name = getNameForRotation(rot);
+		res.base = getBase();
+		res.center = getCenter();
+		res.crop = getCropRect();
+		res.is_animated = is_animated_;
+		res.layer = getLayer();
+		res.offset = offs;
+		res.opacity = getOpacity();
+		if(is_animated_) {
+			res.animation_frames = image_files_[rot];
+		}
+		res.animation_timing = animation_timing_;
+		return res;
+	}
+
 	bool TileImage::eliminate(const std::vector<std::string>& rotations)
 	{
 		// Calculate whether particular rotations are valid.
@@ -780,6 +777,29 @@ namespace hex
 		auto pos_v = image_name_.find("@V");
 		auto pos_r = image_name_.find("@R");
 		auto pos_a = image_name_.find("@A");
+
+		if(pos_a != std::string::npos) {
+			ASSERT_LOG(pos_v == std::string::npos && pos_r == std::string::npos, 
+				"Found an animation string with @V or @R specifier which isn't valid. " << image_name_);
+			if(!animation_frames_.empty()) {
+				for(const auto& ani : animation_frames_) {
+					std::stringstream ss;
+					ss 	<< image_name_.substr(0, pos_a)
+						<< std::dec << std::setw(2) << std::setfill('0') << ani
+						<< image_name_.substr(pos_a + 2);
+					const std::string img_name = ss.str();
+					if(terrain_info_exists(img_name)) {
+						image_files_[0].emplace_back(img_name);
+					}
+				}
+			} else {
+				if(terrain_info_exists(image_name_)) {
+					image_files_[0].emplace_back(image_name_);
+				}
+			}
+			return !image_files_.empty();
+		}
+
 		if(pos_r == std::string::npos) {
 			if(!variations_.empty()) {
 				for(const auto& var : variations_) {
@@ -821,11 +841,21 @@ namespace hex
 	TileImageVariant::TileImageVariant(const variant& v)
 		: tod_(v["tod"].as_string_default("")),
 		  name_(v["name"].as_string_default("")),
-		  random_start_(true),
-		  has_flag_()
+		  random_start_(v["random_start"].as_bool(true)),
+		  has_flag_(),
+		  crop_(),
+		  animation_frames_(),
+		  animation_timing_(v["animation_timing"].as_int32(0)),
+		  layer_(v["layer"].as_int32(0))
 	{
 		if(v.has_key("has_flag")) {
 			has_flag_ = v["has_flag"].as_list_string();
+		}
+		if(v.has_key("CROP")) {
+			crop_ = rect(v["CROP"]["param"]);
+		}
+		if(v.has_key("animation_frames")) {
+			animation_frames_ = v["animation_frames"].as_list_int();
 		}
 	}
 

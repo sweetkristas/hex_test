@@ -56,10 +56,38 @@ namespace hex
 	{
 	public:
 		MapLayer();
-		void preRender(const KRE::WindowPtr& wnd);
+		virtual ~MapLayer() {}
 		void updateAttributes(std::vector<KRE::vertex_texcoord>* attrs);
+		void clearAttributes() { attr_->clear(); }
 	private:
 		std::shared_ptr<KRE::Attribute<KRE::vertex_texcoord>> attr_;
+	};
+
+	class AnimatedMapLayer : public MapLayer
+	{
+	public:
+		AnimatedMapLayer();
+		void preRender(const KRE::WindowPtr& wnd) override;
+		void setAnimationSeq(const std::vector<std::string>& frames);
+		void setAnimationTiming(int frame_time) { timing_ = frame_time; }
+		void setCrop(const rect& r) { crop_rect_ = r; }
+		void addHexPosition(const point& p) { hex_positions_.emplace_back(p); }
+		void setBCO(const point& b, const point& c, const point& o) { base_ = b; center_ = c; offset_ = o; }
+	private:
+		struct AnimFrame
+		{
+			AnimFrame(const rect& a, std::vector<int>& b) : area(a), borders(b) {}
+			rect area;
+			std::vector<int> borders;
+		};
+		std::vector<AnimFrame> frames_;
+		rect crop_rect_;
+		int timing_;
+		std::vector<point> hex_positions_;
+		int current_frame_pos_;
+		point base_;
+		point center_;
+		point offset_;
 	};
 
 	struct MapRenderParams

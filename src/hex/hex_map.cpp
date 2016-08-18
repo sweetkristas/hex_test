@@ -178,10 +178,12 @@ namespace hex
 		images_.clear();
 	}
 
-	// All these arguments should be already compiled at an earlier layer.
-	void HexObject::addImage(const std::string& name, int layer, const point& base, const point& center, const point& offset, const rect& crop, float opacity)
+	void HexObject::addImage(const ImageHolder& holder)
 	{
-		LOG_INFO("Hex" << pos_ << ": " << name << "; layer: " << layer << "; base: " << base << "; center: " << center << "; offset: " << offset);
-		images_.emplace_back(name, layer, base, center, offset, crop, opacity);
+		if(holder.name.empty()) {
+			return;
+		}
+		LOG_INFO("Hex" << pos_ << ": " << holder.name << "; layer: " << holder.layer << "; base: " << holder.base << "; center: " << holder.center << "; offset: " << holder.offset);
+		images_.emplace_back(holder);
 	}
 }

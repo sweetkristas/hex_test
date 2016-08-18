@@ -35,16 +35,6 @@ namespace hex
 {
 	struct ImageHolder 
 	{
-		ImageHolder(const std::string& n, int l, const point& b, const point& c, const point& offs, const rect& crp, float o)
-			: name(n), 
-			  layer(l),
-			  base(b),
-			  center(c),
-			  offset(offs),
-			  crop(crp),
-			  opacity(o)
-		{
-		}
 		std::string name;
 		int layer;
 		point base;
@@ -52,6 +42,9 @@ namespace hex
 		point offset;
 		rect crop;
 		float opacity;
+		bool is_animated;
+		std::vector<std::string> animation_frames;
+		int animation_timing;
 	};
 
 	// Realisation of a HexTile
@@ -78,7 +71,7 @@ namespace hex
 		void clearTempFlags() const { temp_flags_.clear(); }
 		void setTempFlags() const;
 		void clearImages();
-		void addImage(const std::string& name, int layer, const point& base, const point& center, const point& offset, const rect& crop, float opacity);
+		void addImage(const ImageHolder& holder);
 		const std::vector<ImageHolder>& getImages() const { return images_; }
 	private:
 		const HexMap* parent_;

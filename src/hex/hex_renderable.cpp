@@ -34,6 +34,7 @@
 #include "WindowManager.hpp"
 
 #include "random.hpp"
+#include "profile_timer.hpp"
 
 namespace hex
 {
@@ -101,6 +102,90 @@ namespace hex
 		coords->emplace_back(glm::vec2(vx1, vy2), glm::vec2(uv.x1(), uv.y2()));
 	}
 
+	void add_hex_coords(std::vector<KRE::vertex_texcoord>* coords, 
+		const rect& area, 
+		const TexturePtr& tex, 
+		const std::vector<int>& borders, 
+		const point& base, 
+		const point& center, 
+		const point& offset, 
+		const point& hex_pixel_pos)
+	{
+		point p = hex_pixel_pos + offset + center; // + base;
+		if(center.x != 0 || center.y != 0) {
+			p.x -= area.w() / 2;
+			p.y -= area.h() / 2;
+			if(!borders.empty()) {
+				p.x -= (borders[0] + borders[2]) / 2;
+				p.y -= (borders[1] + borders[3]) / 2;
+			}
+		}
+		// in an even-q layout the 0,0 tile is now no longer has a top-left pixel position of 0,0
+		// so we move down half a tile to compensate.
+		p.y += g_hex_tile_size / 2;
+
+		if(!borders.empty()) {
+			p.x += borders[0];
+			p.y += borders[1];
+		}
+		const float v[] = {
+			static_cast<float>(p.x + g_hex_tile_size/2), static_cast<float>(p.y + g_hex_tile_size/2),
+			static_cast<float>(p.x), static_cast<float>(p.y + g_hex_tile_size/2),
+			static_cast<float>(p.x + g_hex_tile_size/4), static_cast<float>(p.y),
+			static_cast<float>(p.x + 3*g_hex_tile_size/4), static_cast<float>(p.y),
+			static_cast<float>(p.x + g_hex_tile_size), static_cast<float>(p.y + g_hex_tile_size/2),
+			static_cast<float>(p.x + 3*g_hex_tile_size/4), static_cast<float>(p.y + g_hex_tile_size),
+			static_cast<float>(p.x + g_hex_tile_size/4), static_cast<float>(p.y + g_hex_tile_size),
+		};
+	
+		std::vector<float> uv;
+		auto res = tex->getTextureCoords(0, area.x() + g_hex_tile_size/2, area.y() + g_hex_tile_size/2);
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x(), area.y() + g_hex_tile_size/2);
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x() + g_hex_tile_size/4, area.y());
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x() + 3*g_hex_tile_size/4, area.y());
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x() + g_hex_tile_size, area.y() + g_hex_tile_size/2);
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x() + 3*g_hex_tile_size/4, area.y() + g_hex_tile_size);
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+		res = tex->getTextureCoords(0, area.x() + g_hex_tile_size/4, area.y() + g_hex_tile_size);
+		uv.emplace_back(res.first);
+		uv.emplace_back(res.second);
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[2], v[3]), glm::vec2(uv[2], uv[3]));
+		coords->emplace_back(glm::vec2(v[4], v[5]), glm::vec2(uv[4], uv[5]));
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[4], v[5]), glm::vec2(uv[4], uv[5]));
+		coords->emplace_back(glm::vec2(v[6], v[7]), glm::vec2(uv[6], uv[7]));
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[6], v[7]), glm::vec2(uv[6], uv[7]));
+		coords->emplace_back(glm::vec2(v[8], v[9]), glm::vec2(uv[8], uv[9]));
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[8], v[9]), glm::vec2(uv[8], uv[9]));
+		coords->emplace_back(glm::vec2(v[10], v[11]), glm::vec2(uv[10], uv[11]));
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[10], v[11]), glm::vec2(uv[10], uv[11]));
+		coords->emplace_back(glm::vec2(v[12], v[13]), glm::vec2(uv[12], uv[13]));
+
+		coords->emplace_back(glm::vec2(v[0], v[1]), glm::vec2(uv[0], uv[1]));
+		coords->emplace_back(glm::vec2(v[12], v[13]), glm::vec2(uv[12], uv[13]));
+		coords->emplace_back(glm::vec2(v[2], v[3]), glm::vec2(uv[2], uv[3]));
+	}
+
 	void MapNode::update(int width, int height, const std::vector<HexObject>& tiles)
 	{
 		layers_.clear();
@@ -120,22 +205,44 @@ namespace hex
 				rect area;
 				std::vector<int> borders;
 				auto tex = get_terrain_texture(img.name, &area, &borders);
-				if(tex) {
+				if(!img.crop.empty()) {
+					area = rect(area.x1() + img.crop.x1(), area.y1() + img.crop.y1(), img.crop.w(), img.crop.h());
+				}
+				if(img.is_animated) {
 					auto& layer = map_layers[std::make_pair(img.layer,tex->id())];
-					layer.first.reset(new MapLayer);
+					std::shared_ptr<AnimatedMapLayer> aml = std::dynamic_pointer_cast<AnimatedMapLayer>(layer.first);
+					if(aml == nullptr) {
+						aml = std::make_shared<AnimatedMapLayer>();
+					}
+					aml->setTexture(tex);
+					aml->setAnimationSeq(img.animation_frames);
+					aml->setAnimationTiming(img.animation_timing);
+					aml->setCrop(img.crop);
+					aml->setColor(1.0f, 1.0f, 1.0f, img.opacity);
+					aml->addHexPosition(get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), g_hex_tile_size));
+					aml->setBCO(img.base, img.center, img.offset);
+					
+					layer.first = aml;
+				} else {
+					if(tex) {
+						auto& layer = map_layers[std::make_pair(img.layer,tex->id())];
+						if(layer.first == nullptr) {
+							layer.first.reset(new MapLayer);
+						}
 
-					layer.first->setTexture(tex);
-					add_tex_coords(&layer.second, 
-						tex->getTextureCoords(0, area), 
-						area.w(), 
-						area.h(), 
-						borders, 
-						img.base, 
-						img.center, 
-						img.offset,
-						get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), 
-						g_hex_tile_size));
-					layer.first->setColor(1.0f, 1.0f, 1.0f, img.opacity);
+						layer.first->setTexture(tex);
+						add_tex_coords(&layer.second, 
+							tex->getTextureCoords(0, area), 
+							area.w(), 
+							area.h(), 
+							borders, 
+							img.base, 
+							img.center, 
+							img.offset,
+							get_pixel_pos_from_tile_pos_evenq(hex.getPosition(), 
+							g_hex_tile_size));
+						layer.first->setColor(1.0f, 1.0f, 1.0f, img.opacity);
+					}
 				}
 			}
 		}
@@ -167,12 +274,78 @@ namespace hex
 		addAttributeSet(as);
 	}
 	
-	void MapLayer::preRender(const KRE::WindowPtr& wnd)
-	{
-	}
-
 	void MapLayer::updateAttributes(std::vector<KRE::vertex_texcoord>* attrs)
 	{
 		attr_->update(attrs);
+	}
+
+	AnimatedMapLayer::AnimatedMapLayer()
+		: frames_(),
+		  crop_rect_(),
+		  timing_(100),
+		  hex_positions_(),
+		  current_frame_pos_(0)
+	{
+	}
+
+	void AnimatedMapLayer::preRender(const KRE::WindowPtr& wnd)
+	{
+		static int last_check_time = -1;
+		bool update_anim = false;
+		if(last_check_time == -1) {
+			last_check_time = profile::get_tick_time();
+			update_anim = true;
+		} else {
+			int current_tick = profile::get_tick_time();
+			if(current_tick - last_check_time >= timing_) {
+				last_check_time = current_tick;
+				update_anim = true;
+			}
+		}
+
+		if(update_anim) {
+			std::vector<KRE::vertex_texcoord> vtx;
+			auto tex = getTexture();
+			for(const auto& pos : hex_positions_) {
+				rect area = frames_[current_frame_pos_].area;
+				if(!crop_rect_.empty()) {
+					area = rect(area.x1() + crop_rect_.x1(), area.y1() + crop_rect_.y1(), crop_rect_.w(), crop_rect_.h());
+				}
+				add_tex_coords(&vtx, 
+					tex->getTextureCoords(0, area),
+					area.w(),
+					area.h(),
+					frames_[current_frame_pos_].borders, 
+					base_, 
+					center_, 
+					offset_,
+					pos);
+				/*add_hex_coords(&vtx, 
+					area, 
+					tex,
+					frames_[current_frame_pos_].borders, 
+					base_, 
+					center_, 
+					offset_,
+					pos);*/
+			}
+
+			clearAttributes();
+			updateAttributes(&vtx);
+
+			if(++current_frame_pos_ >= static_cast<int>(frames_.size())) {
+				current_frame_pos_ = 0;
+			}
+		}
+	}
+
+	void AnimatedMapLayer::setAnimationSeq(const std::vector<std::string>& frames)
+	{
+		for(const auto& frame : frames) {
+			rect area;
+			std::vector<int> borders;
+			auto tex = get_terrain_texture(frame, &area, &borders);
+			frames_.emplace_back(area, borders);
+		}
 	}
 }

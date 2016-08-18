@@ -37,4 +37,5 @@ namespace hex
 	typedef std::shared_ptr<HexMap> HexMapPtr;
 
 	class HexObject;
+	struct ImageHolder;
 }
