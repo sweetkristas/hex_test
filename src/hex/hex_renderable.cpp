@@ -31,6 +31,7 @@
 
 #include "Shaders.hpp"
 #include "SceneGraph.hpp"
+#include "StencilSettings.hpp"
 #include "WindowManager.hpp"
 
 #include "random.hpp"
@@ -69,7 +70,7 @@ namespace hex
 		attachObject(rr_);
 	}
 
-	void add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
+	point calculate_position(int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
 	{
 		point p = hex_pixel_pos + offset + center; // + base;
 		if(center.x != 0 || center.y != 0) {
@@ -88,6 +89,12 @@ namespace hex
 			p.x += borders[0];
 			p.y += borders[1];
 		}
+		return p;
+	}
+
+	point add_tex_coords(std::vector<KRE::vertex_texcoord>* coords, const rectf& uv, int w, int h, const std::vector<int>& borders, const point& base, const point& center, const point& offset, const point& hex_pixel_pos)
+	{
+		point p = calculate_position(w, h, borders, base, center, offset, hex_pixel_pos);
 		const float vx1 = static_cast<float>(p.x);
 		const float vy1 = static_cast<float>(p.y);
 		const float vx2 = static_cast<float>(p.x + w);
@@ -100,6 +107,7 @@ namespace hex
 		coords->emplace_back(glm::vec2(vx2, vy2), glm::vec2(uv.x2(), uv.y2()));
 		coords->emplace_back(glm::vec2(vx1, vy1), glm::vec2(uv.x1(), uv.y1()));
 		coords->emplace_back(glm::vec2(vx1, vy2), glm::vec2(uv.x1(), uv.y2()));
+		return p;
 	}
 
 	void add_hex_coords(std::vector<KRE::vertex_texcoord>* coords, 
@@ -282,7 +290,9 @@ namespace hex
 		: frames_(),
 		  crop_rect_(),
 		  timing_(100),
-		  current_frame_pos_(0)
+		  current_frame_pos_(0),
+		  mask_(nullptr),
+		  alpha_uv_()
 	{
 	}
 
@@ -302,16 +312,26 @@ namespace hex
 		}
 
 		if(update_anim) {
+			if(mask_ == nullptr) {
+				std::vector<int> borders;
+				rect area;
+				auto tex = get_terrain_texture("alphamask", &area, &borders);
+				alpha_uv_ = tex->getTextureCoords(0, area);
+				mask_.reset(new Blittable(tex));
+			}
+
 			std::vector<KRE::vertex_texcoord> vtx;
+			std::vector<KRE::vertex_texcoord> mask_vtx;
 			auto tex = getTexture();
-			for(const auto& f : frames_) {
+			for(auto it = frames_.cbegin(); it != frames_.cend(); ++it) {
+				const auto& f = *it;
 				const auto& pos = f.first;
 				const auto& frame = f.second;
 				rect area = frame[current_frame_pos_ % frame.size()].area;
 				if(!crop_rect_.empty()) {
 					area = rect(area.x1() + crop_rect_.x1(), area.y1() + crop_rect_.y1(), crop_rect_.w(), crop_rect_.h());
 				}
-				add_tex_coords(&vtx, 
+				point p = add_tex_coords(&vtx, 
 					tex->getTextureCoords(0, area),
 					area.w(),
 					area.h(),
@@ -320,6 +340,17 @@ namespace hex
 					center_, 
 					offset_,
 					pos);
+				if(it != frames_.cbegin()) {
+					mask_vtx.emplace_back(glm::vec2(p.x, p.y), glm::vec2(alpha_uv_.x1(), alpha_uv_.y1())); // degenerate
+				}
+				mask_vtx.emplace_back(glm::vec2(p.x, p.y), glm::vec2(alpha_uv_.x1(), alpha_uv_.y1()));
+				mask_vtx.emplace_back(glm::vec2(p.x + area.w(), p.y), glm::vec2(alpha_uv_.x2(), alpha_uv_.y1()));
+				mask_vtx.emplace_back(glm::vec2(p.x, p.y + area.h()), glm::vec2(alpha_uv_.x1(), alpha_uv_.y2()));
+				mask_vtx.emplace_back(glm::vec2(p.x + area.w(), p.y + area.h()), glm::vec2(alpha_uv_.x2(), alpha_uv_.y2()));
+				auto next_it = it; ++next_it;
+				if(next_it != frames_.cend()) {
+					mask_vtx.emplace_back(glm::vec2(p.x + area.w(), p.y + area.h()), glm::vec2(alpha_uv_.x2(), alpha_uv_.y2())); // degenerate
+				}
 				/*add_hex_coords(&vtx, 
 					area, 
 					tex,
@@ -332,6 +363,9 @@ namespace hex
 
 			clearAttributes();
 			updateAttributes(&vtx);
+
+			mask_->update(&mask_vtx);
+			setClipSettings(get_stencil_mask_settings(), mask_);
 
 			++current_frame_pos_;
 		}

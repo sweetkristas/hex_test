@@ -24,6 +24,7 @@
 #pragma once
 
 #include "AttributeSet.hpp"
+#include "Blittable.hpp"
 #include "SceneNode.hpp"
 #include "SceneObject.hpp"
 
@@ -86,6 +87,8 @@ namespace hex
 		point base_;
 		point center_;
 		point offset_;
+		std::shared_ptr<KRE::Blittable> mask_;
+		rectf alpha_uv_;
 	};
 
 	struct MapRenderParams
