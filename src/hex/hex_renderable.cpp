@@ -318,6 +318,11 @@ namespace hex
 				auto tex = get_terrain_texture("alphamask", &area, &borders);
 				alpha_uv_ = tex->getTextureCoords(0, area);
 				mask_.reset(new Blittable(tex));
+				auto shader = ShaderProgram::getSystemDefault()->clone();
+				shader->setUniformDrawFunction([](ShaderProgramPtr shader) { 
+					shader->setUniformValue(shader->getDiscardUniform(), 1);
+				});
+				mask_->setShader(shader);
 			}
 
 			std::vector<KRE::vertex_texcoord> vtx;

@@ -164,6 +164,8 @@ int main(int argc, char* argv[])
 	hints.add("dpi_aware", true);
 	hints.add("use_vsync", true);
 	hints.add("resizeable", true);
+	hints.add("version", 302);
+	hints.add("profile", "core");
 
 	LOG_DEBUG("Creating window of size: " << width << "x" << height);
 	auto main_wnd = wm.createWindow(width, height, hints.build());
